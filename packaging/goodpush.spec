@@ -8,7 +8,8 @@ from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dyn
 datas, binaries, hidden = [], [], []
 # goodpush itself: every module (many are imported lazily) and its page, templates and scripts
 hidden += collect_submodules("goodpush")
-datas += collect_data_files("goodpush")
+# ... and its .py files too: the physio model reads its VERSION from model.py, numba caches by source file
+datas += collect_data_files("goodpush", include_py_files=True)
 datas += [("../LICENSE", "."), ("../NOTICE", "."), ("THIRD_PARTY_NOTICES.txt", ".")]      # notices.py writes the second
 # libraries with native parts or plugins PyInstaller can't see from the imports
 BLUETOOTH = {"win32": ("winrt",), "darwin": ("CoreBluetooth", "objc")}.get(sys.platform, ())   # bleak's backends
@@ -27,8 +28,9 @@ UNUSED = ["tkinter", "matplotlib", "IPython", "pytest", "PIL",
           "pyarrow.orc", "pyarrow._orc", "pyarrow.substrait", "pyarrow._substrait", "pyarrow.cuda", "pyarrow._cuda",
           "pyarrow.gandiva",
           "PySide6.QtWebEngineCore", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtPdf", "PySide6.Qt3DCore"]
-# ... and their files, plus pyarrow's C++ headers / sources and packages' metadata of what's left out
-UNUSED_FILES = ("flight", "arrow_s3", "substrait", "gandiva", "arrow_cuda", "translations",
+# ... and their files, plus pyarrow's C++ headers / sources and packages' metadata of what's left out.
+# Not libarrow_substrait: pyarrow.lib links it (pyarrow 26), so without it pyarrow, and parquet, won't import.
+UNUSED_FILES = ("flight", "arrow_s3", "gandiva", "arrow_cuda", "translations",
                 "pyarrow/include/", "pyarrow/src/", ".pyx", ".pxd", "garminconnect-", "garth-", "curl_cffi-")
 
 a = Analysis(
