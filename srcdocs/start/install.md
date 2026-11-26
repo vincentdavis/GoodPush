@@ -57,21 +57,29 @@ Only needed to [ride with GoodPush's trainer bar](../guide/riding.md#goodpush-s-
 
 ## From source
 
-For developers, or to run the latest code. You need **Python 3.10 or newer** and the code:
+For developers, or to run the latest code. You need **Python 3.12 or newer** (3.14 recommended) and the code:
 
 ```bash
 git clone https://github.com/GoodPush/GoodPush.git
 cd GoodPush
 ```
 
-**Option A: conda / Miniforge** (recommended; it gets the compiled libraries right on every platform):
+**Option A: uv** (recommended; it installs Python 3.14 and the exact versions in `uv.lock`):
+
+```bash
+uv run --extra all goodpush app                # the first run sets up .venv, then starts the app
+```
+
+Use `uv sync --extra all` to set up without starting anything, and `uv run goodpush ...` for any command.
+
+**Option B: conda / Miniforge** (for Intel Macs, where pip has no recent JAX or numba builds):
 
 ```bash
 conda env create -f environment.yml            # Windows: environment-windows.yml
 conda activate goodpush
 ```
 
-**Option B: plain Python with a virtual environment:**
+**Option C: plain Python with a virtual environment:**
 
 ```bash
 python -m venv .venv
@@ -80,7 +88,7 @@ source .venv/bin/activate                      # macOS / Linux
 pip install -e ".[all]"
 ```
 
-The extras (`pip install -e ".[name]"`):
+The extras (`uv sync --extra name`, or `pip install -e ".[name]"`):
 
 | Extra | What it adds |
 |---|---|
@@ -92,7 +100,7 @@ The extras (`pip install -e ".[name]"`):
 | `dev` | `all` plus pytest and the commit checks |
 | `docs` | Sphinx, to build this guide |
 
-`-e` (editable) means changes to the code take effect without reinstalling. Check it worked with
+uv and `-e` (editable) both mean changes to the code take effect without reinstalling. Check it worked with
 `goodpush --help`, then start the app with `goodpush app`.
 
 ### Your folder from the command line
