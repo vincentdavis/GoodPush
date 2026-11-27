@@ -90,6 +90,9 @@ shows it all.
 
 ## On your phone
 
+On a narrow screen the pages are in a bar at the bottom: **Today**, **Calendar**, **Fitness** and **Plan**, with
+**Rider**, **Model**, **Recovery**, **Settings** and this guide under **More**.
+
 `goodpush app --lan` prints a link with an access key (`http://192.168.x.x:8765/?key=...`). Open it once on your
 phone (same Wi-Fi); the key is remembered, and you can add the page to your home screen. Keep the link private: it
 opens your health data. Without `--lan` the app only answers on the computer itself. Windows asks once whether

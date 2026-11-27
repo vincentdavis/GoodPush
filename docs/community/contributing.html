@@ -391,13 +391,17 @@ pencil icon, edit, and choose <strong>Propose changes</strong>. GitHub walks you
 <h3>Setup<a class="headerlink" href="#setup" title="Link to this heading">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/GoodPush/GoodPush.git
 <span class="nb">cd</span><span class="w"> </span>GoodPush
-conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml<span class="w">            </span><span class="c1"># Windows: environment-windows.yml</span>
-conda<span class="w"> </span>activate<span class="w"> </span>goodpush
-pre-commit<span class="w"> </span>install<span class="w">                             </span><span class="c1"># the checks every commit must pass</span>
-pytest<span class="w"> </span>tests<span class="w"> </span>-q<span class="w">                                </span><span class="c1"># ~5 minutes; the physio tests are most of it</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w">                            </span><span class="c1"># .venv with Python 3.14 (.python-version), versions from uv.lock</span>
+uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install<span class="w">                      </span><span class="c1"># the checks every commit must pass</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests<span class="w"> </span>-q<span class="w">                         </span><span class="c1"># ~5 minutes; the physio tests are most of it</span>
 </pre></div>
 </div>
-<p>Without conda: Python 3.10+, <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">venv</span> <span class="pre">.venv</span></code>, activate it, then <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[dev]&quot;</span></code>.</p>
+<p><a class="reference external" href="https://docs.astral.sh/uv/">uv</a> installs Python 3.14 itself if you don’t have it. <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">&lt;command&gt;</span></code> runs in the
+project’s <code class="docutils literal notranslate"><span class="pre">.venv</span></code> (or activate it: <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">.venv/bin/activate</span></code>, Windows <code class="docutils literal notranslate"><span class="pre">.venv\Scripts\activate</span></code>). After changing
+dependencies in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>, run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">lock</span></code> and commit <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code>.</p>
+<p>Intel Macs: pip has no recent JAX or numba wheels there, so use conda instead:
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">env</span> <span class="pre">create</span> <span class="pre">-f</span> <span class="pre">environment.yml</span></code> (Windows without uv: <code class="docutils literal notranslate"><span class="pre">environment-windows.yml</span></code>), then <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">goodpush</span></code>.
+GoodPush needs Python 3.12 or newer (garminconnect needs 3.12); 3.14 is what it’s developed and built with.</p>
 <p>Try your change in the app with <code class="docutils literal notranslate"><span class="pre">goodpush</span> <span class="pre">app</span></code>, on a <strong>copy</strong> of a workspace (<code class="docutils literal notranslate"><span class="pre">goodpush</span> <span class="pre">--root</span> <span class="pre">path/to/copy</span> <span class="pre">app</span></code>):
 the app can start a Garmin sync when it opens, and some steps rewrite files in the workspace.</p>
 </section>
@@ -430,7 +434,8 @@ first, and open an issue to discuss model changes before writing them.</p></li>
 <li><p><strong>The app’s front end</strong> (<code class="docutils literal notranslate"><span class="pre">src/goodpush/app/static/js/</span></code>): plain ES modules, no build step. Named imports and
 exports only, no <code class="docutils literal notranslate"><span class="pre">window.</span></code> globals, no inline <code class="docutils literal notranslate"><span class="pre">onclick</span></code>. One <code class="docutils literal notranslate"><span class="pre">Page</span></code> subclass per page in <code class="docutils literal notranslate"><span class="pre">pages/</span></code>; shared
 pieces are classes (<code class="docutils literal notranslate"><span class="pre">TimeWindow</span></code>, <code class="docutils literal notranslate"><span class="pre">Segmented</span></code>, <code class="docutils literal notranslate"><span class="pre">Pref</span></code>, <code class="docutils literal notranslate"><span class="pre">Lazy</span></code>) - look for the one that does it before writing
-a new one.</p></li>
+a new one. Styles: <code class="docutils literal notranslate"><span class="pre">styles/app.css</span></code> (Tailwind CSS + daisyUI), compiled into <code class="docutils literal notranslate"><span class="pre">static/app.css</span></code> with
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">styles/build.py</span></code> (see <code class="docutils literal notranslate"><span class="pre">styles/README.md</span></code>).</p></li>
 <li><p><strong>Plain language</strong> in the app: say what it means for the rider, briefly.</p></li>
 </ul>
 </section>
@@ -448,8 +453,7 @@ with the additional terms in <a class="reference external" href="https://github.
 <h3>The guide (GitHub Pages)<a class="headerlink" href="#the-guide-github-pages" title="Link to this heading">¶</a></h3>
 <p>The guide’s sources are in <code class="docutils literal notranslate"><span class="pre">srcdocs/</span></code> (Markdown and reStructuredText); the built site is committed to <code class="docutils literal notranslate"><span class="pre">docs/</span></code>,
 which GitHub Pages serves. After changing <code class="docutils literal notranslate"><span class="pre">srcdocs/</span></code> (or the physio model’s docstrings):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[docs]"</span>
-python<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>-d<span class="w"> </span>build/doctrees<span class="w"> </span>srcdocs<span class="w"> </span>docs
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>-d<span class="w"> </span>build/doctrees<span class="w"> </span>srcdocs<span class="w"> </span>docs
 </pre></div>
 </div>
 <p>and commit <code class="docutils literal notranslate"><span class="pre">docs/</span></code> with the change. The guide is public: no personal numbers in it.</p>

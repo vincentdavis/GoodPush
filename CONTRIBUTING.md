@@ -88,13 +88,18 @@ If a sentence in the app or [the guide](https://goodpush.github.io/GoodPush/) co
 ```bash
 git clone https://github.com/GoodPush/GoodPush.git
 cd GoodPush
-conda env create -f environment.yml            # Windows: environment-windows.yml
-conda activate goodpush
-pre-commit install                             # the checks every commit must pass
-pytest tests -q                                # ~5 minutes; the physio tests are most of it
+uv sync --extra dev                            # .venv with Python 3.14 (.python-version), versions from uv.lock
+uv run pre-commit install                      # the checks every commit must pass
+uv run pytest tests -q                         # ~5 minutes; the physio tests are most of it
 ```
 
-Without conda: Python 3.10+, `python -m venv .venv`, activate it, then `pip install -e ".[dev]"`.
+[uv](https://docs.astral.sh/uv/) installs Python 3.14 itself if you don't have it. `uv run <command>` runs in the
+project's `.venv` (or activate it: `source .venv/bin/activate`, Windows `.venv\Scripts\activate`). After changing
+dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`.
+
+Intel Macs: pip has no recent JAX or numba wheels there, so use conda instead:
+`conda env create -f environment.yml` (Windows without uv: `environment-windows.yml`), then `conda activate goodpush`.
+GoodPush needs Python 3.12 or newer (garminconnect needs 3.12); 3.14 is what it's developed and built with.
 
 Try your change in the app with `goodpush app`, on a **copy** of a workspace (`goodpush --root path/to/copy app`):
 the app can start a Garmin sync when it opens, and some steps rewrite files in the workspace.
@@ -126,7 +131,8 @@ the app can start a Garmin sync when it opens, and some steps rewrite files in t
 * **The app's front end** (`src/goodpush/app/static/js/`): plain ES modules, no build step. Named imports and
   exports only, no `window.` globals, no inline `onclick`. One `Page` subclass per page in `pages/`; shared
   pieces are classes (`TimeWindow`, `Segmented`, `Pref`, `Lazy`) - look for the one that does it before writing
-  a new one.
+  a new one. Styles: `styles/app.css` (Tailwind CSS + daisyUI), compiled into `static/app.css` with
+  `python styles/build.py` (see `styles/README.md`).
 * **Plain language** in the app: say what it means for the rider, briefly.
 
 ### Pull requests
@@ -144,8 +150,7 @@ The guide's sources are in `srcdocs/` (Markdown and reStructuredText); the built
 which GitHub Pages serves. After changing `srcdocs/` (or the physio model's docstrings):
 
 ```bash
-pip install -e ".[docs]"
-python -m sphinx -b html -d build/doctrees srcdocs docs
+uv run --extra docs python -m sphinx -b html -d build/doctrees srcdocs docs
 ```
 
 and commit `docs/` with the change. The guide is public: no personal numbers in it.

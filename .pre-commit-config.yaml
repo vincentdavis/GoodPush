@@ -4,8 +4,9 @@
 # (installs both the pre-commit and the commit-msg hook). Run on everything: pre-commit run --all-files
 default_install_hook_types: [pre-commit, commit-msg]
 default_stages: [pre-commit]
-# third-party front-end libraries, copied in unchanged (their npm hash checked when added): no hook edits or judges them
-exclude: ^src/goodpush/app/static/vendor/
+# third-party front-end libraries, copied in unchanged (their release hash checked when added), and the compiled
+# stylesheet (styles/build.py writes it): no hook edits or judges them
+exclude: ^(src/goodpush/app/static/vendor/|styles/vendor/|src/goodpush/app/static/app\.css$)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

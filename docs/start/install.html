@@ -354,24 +354,29 @@ device’s driver must not be changed); if its driver already says WinUSB or lib
 </section>
 <section id="from-source">
 <h2>From source<a class="headerlink" href="#from-source" title="Link to this heading">¶</a></h2>
-<p>For developers, or to run the latest code. You need <strong>Python 3.10 or newer</strong> and the code:</p>
+<p>For developers, or to run the latest code. You need <strong>Python 3.12 or newer</strong> (3.14 recommended) and the code:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/GoodPush/GoodPush.git
 <span class="nb">cd</span><span class="w"> </span>GoodPush
 </pre></div>
 </div>
-<p><strong>Option A: conda / Miniforge</strong> (recommended; it gets the compiled libraries right on every platform):</p>
+<p><strong>Option A: uv</strong> (recommended; it installs Python 3.14 and the exact versions in <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>all<span class="w"> </span>goodpush<span class="w"> </span>app<span class="w">                </span><span class="c1"># the first run sets up .venv, then starts the app</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">all</span></code> to set up without starting anything, and <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">goodpush</span> <span class="pre">...</span></code> for any command.</p>
+<p><strong>Option B: conda / Miniforge</strong> (for Intel Macs, where pip has no recent JAX or numba builds):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml<span class="w">            </span><span class="c1"># Windows: environment-windows.yml</span>
 conda<span class="w"> </span>activate<span class="w"> </span>goodpush
 </pre></div>
 </div>
-<p><strong>Option B: plain Python with a virtual environment:</strong></p>
+<p><strong>Option C: plain Python with a virtual environment:</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
 .venv<span class="se">\S</span>cripts<span class="se">\a</span>ctivate<span class="w">                         </span><span class="c1"># Windows</span>
 <span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">                      </span><span class="c1"># macOS / Linux</span>
 pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[all]"</span>
 </pre></div>
 </div>
-<p>The extras (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[name]&quot;</span></code>):</p>
+<p>The extras (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">name</span></code>, or <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[name]&quot;</span></code>):</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -404,7 +409,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">-e</span></code> (editable) means changes to the code take effect without reinstalling. Check it worked with
+<p>uv and <code class="docutils literal notranslate"><span class="pre">-e</span></code> (editable) both mean changes to the code take effect without reinstalling. Check it worked with
 <code class="docutils literal notranslate"><span class="pre">goodpush</span> <span class="pre">--help</span></code>, then start the app with <code class="docutils literal notranslate"><span class="pre">goodpush</span> <span class="pre">app</span></code>.</p>
 <section id="your-folder-from-the-command-line">
 <h3>Your folder from the command line<a class="headerlink" href="#your-folder-from-the-command-line" title="Link to this heading">¶</a></h3>
