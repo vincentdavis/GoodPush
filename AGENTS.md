@@ -125,6 +125,7 @@ The app's stylesheet is Tailwind CSS v4 with daisyUI 5. Details: `styles/README.
 * Keep the global `:focus-visible` ring; don't add `outline:none`.
 * Check a style change in light and dark mode at laptop and phone widths (the phone bottom bar has Today, Calendar,
   Fitness, Plan and More).
+* No GitHub Actions builds: the compiled CSS is built locally and committed.
 
 ## Planned modernization
 
