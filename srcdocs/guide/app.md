@@ -73,8 +73,11 @@ Illnesses come from words like "sick", "flu", "covid" or "cough" in your ride de
 ## Settings
 
 Your connections (Garmin, Fitbit, Incyclist, your other computers), the plan's settings, your athlete details,
-FTP, the model, the trainer, and **Rebuild everything** (after importing an export). Everything is saved in
-`goodpush.toml` in your GoodPush folder.
+FTP, the model and the trainer, in sections you open and close (each shows its status while closed; **Expand all**
+opens them all). Under **Data and model**: **Rebuild everything** (after importing an export) and **Fit the model
+from scratch** (`goodpush physio --fresh`: from the model's priors instead of the last fit, after a model update or
+when its numbers look implausible; its 5-95 % ranges come back with the next full run on the Model page). Everything
+is saved in `goodpush.toml` in your GoodPush folder.
 
 ## Help & feedback
 

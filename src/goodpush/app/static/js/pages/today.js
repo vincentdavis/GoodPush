@@ -129,9 +129,9 @@ class TodayPage extends Page {
     const rideLink = S.rides?.length ? `last ride <a href="#ride/${encodeURIComponent(S.rides[0].id)}">${esc(S.rides[0].name || "ride")}, ${esc(S.rides[0].date.slice(5))}</a>` : "";
     const body = G.configured ? `<div class="row" style="margin-top:10px">
         <button class="btn primary" data-act="garmin_sync">Update now</button>
-        <span class="small muted">${G.auto_hours > 0 ? `Checks Garmin every ${fmt(G.auto_hours)} h while the app runs` : "Automatic checks are off"}${last ? ` · last check ${esc(last)}` : ""} · <a href="#settings">Settings</a></span></div>`
+        <span class="small muted">${G.auto_hours > 0 ? `Checks Garmin every ${fmt(G.auto_hours)} h while the app runs` : "Automatic checks are off"}${last ? ` · last check ${esc(last)}` : ""} · <a href="#settings/garmin">Settings</a></span></div>`
       : `<div class="row" style="margin-top:10px">
-        <a class="btn primary" href="#settings">Connect Garmin</a>
+        <a class="btn primary" href="#settings/keys">Connect Garmin</a>
         <span class="small muted">Add your Garmin Personal API key in Settings once – after that, <b>Update now</b> here pulls what's new.</span></div>`;
     return `<div class="card upd ${fresh ? "" : "stale"}">
     <div class="row">${markers.chipFor(status[0], status[1])}<span class="small muted">${rideLink}</span></div>
