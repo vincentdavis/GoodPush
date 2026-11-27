@@ -57,10 +57,10 @@ Developers: [install from source](https://goodpush.github.io/GoodPush/start/inst
 
 ## First steps
 
-1. **Connect Garmin**: on the **Today** page click **Connect Garmin** and paste a Garmin Personal API key (Garmin
+1. **Connect Garmin**: on the **Today** page click **Connect Garmin** (also in the **Setup** list at the top right) and paste a Garmin Personal API key (Garmin
    Connect on the web > Settings > Personal API Key). GoodPush pulls your last 90 days.
-2. **Bring in your whole history**: request your account export from Garmin (or Strava) and drop the zip onto the
-   Today page. Your thresholds and plan get much better with years of rides.
+2. **Bring in your whole history**: request your account export from Garmin (or Strava) and drop the zip anywhere
+   in the app. Your thresholds and plan get much better with years of rides.
 3. **Set up your plan**: on **Plan**, add your phases (base, build...) and races, and your hours per weekday in
    **Settings**.
 4. **Get your workouts onto your watch and apps**: GoodPush sends your plan to

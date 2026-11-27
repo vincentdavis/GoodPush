@@ -5,11 +5,20 @@ Start it from the installer's icon, or with `goodpush app` (it opens <http://127
 
 ## Today
 
-This morning's readiness: sleep, HRV and resting heart rate against your normal, and your form, as green (good to
-go), amber (go easier) or red (rest or easy only). Below it today's session with watt targets and its shape,
-**How do you feel?** (Normal / A bit off / Sick, which adjusts the plan), **Mark done** / **Skipped**, the workout
-file, and **▶ Ride it now** to ride it on the trainer. **Update now** pulls new data from Garmin. A new user also
-finds the guide to bringing in their whole history here.
+One card for the day: this morning's verdict from your sleep, HRV and resting heart rate against your normal, and your
+form, as green (good to go), amber (go easier) or red (rest or easy only), with **How do you feel?** (Normal / A bit
+off / Sick, which adjusts the plan) and **Why** for the signs behind it. Next to it today's session with its shape,
+**▶ Ride it now**, **Mark done** / **Skipped** and the workout files; **Steps and why** has the watt targets. Below,
+this morning's numbers and the next session.
+
+**‹ ›** beside the date (or the ← → keys, or a swipe on a phone) step to the days before and after: what you rode
+and that morning's numbers, or what's planned.
+
+**At the top right**, the cloud icon shows whether your data is up to date (green), behind (amber), had a problem (red)
+or isn't connected yet (grey). Hover it for a summary; click it for each kind of data, **Update now** and **All sync
+details**, the Sync page with the last update's log. **Setup 2/4** (until you've done them) lists what's left to set
+up: connecting Garmin, bringing in your whole history, the model's full run and a ride app. **Later** and **Don't
+show** put a task away.
 
 ## Calendar
 

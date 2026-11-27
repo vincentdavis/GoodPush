@@ -5,6 +5,7 @@ import {dips} from "./dips.js";
 import {modelPage} from "./pages/model.js";
 import {calendarPage} from "./calendar/calendar.js";
 import {el} from "./charts.js";
+import {statusBar} from "./status_bar.js";
 
 export let S = null;                 // last state from the server
 // while a job runs: every 0.3 s; otherwise every few seconds, so a job the app starts by itself (the
@@ -74,6 +75,7 @@ class JobWatch {
       if (this.APP_RUN && j.started && j.started !== this.APP_RUN) { location.reload(); return; }   // the app was restarted: its new page
       this.APP_RUN = this.APP_RUN || j.started;
       this.JOB = j;
+      statusBar.refresh();
       if (S && j.code_stale !== S.code_stale) { S.code_stale = j.code_stale; router.render(); }   // goodpush updated: say so now
       if (S && (j.peer_waiting || null) !== (S.peer_waiting || null)) { S.peer_waiting = j.peer_waiting || null; router.render(); }
       const chip = $("#jobchip");
@@ -92,7 +94,7 @@ class JobWatch {
         const ended = j.name && j.t && Date.now() / 1000 - j.t < 900 && j.ok !== null && !this.pollJob.seen?.[j.t];
         if (ended) {
           this.pollJob.seen = {...(this.pollJob.seen || {}), [j.t]: true};
-          toast.show(j.ok ? "Updated" : `Failed: ${j.log.at(-1)?.replace(/^failed: /, "") || "no details"} – the log is on the Today page`);
+          toast.show(j.ok ? "Updated" : `Failed: ${j.log.at(-1)?.replace(/^failed: /, "") || "no details"} – the log is on the Sync page`);
         }
         // a job's end, or newer rides / plan than this page has (it missed that end: a throttled window, a sync)
         // (an app not restarted since an update doesn't send them: no reload every poll)

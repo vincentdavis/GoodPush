@@ -13,14 +13,16 @@ import {recoveryPage} from "./pages/recovery.js";
 import {modelPage} from "./pages/model.js";
 import {ridesPage} from "./pages/rides.js";
 import {ridePage} from "./pages/ride.js";
+import {syncPage} from "./pages/sync.js";
+import {statusBar} from "./status_bar.js";
 import {calendarPage} from "./calendar/calendar.js";
 import {TimeWindow} from "./charts.js";
 import {athleteMenu} from "./athlete_menu.js";
 
 // routing
 const PAGES = {today: todayPage, plan: planPage, calendar: calendarPage, fitness: fitnessPage, rider: riderPage, recovery: recoveryPage,
-  settings: settingsPage, rides: ridesPage, ride: ridePage, sources: sourcesPage, model: modelPage, help: helpPage};
-const TAB_OF = {rides: "fitness", ride: "fitness", sources: "settings", help: "settings"};
+  settings: settingsPage, rides: ridesPage, ride: ridePage, sources: sourcesPage, model: modelPage, help: helpPage, sync: syncPage};
+const TAB_OF = {rides: "fitness", ride: "fitness", sources: "settings", help: "settings", sync: "settings"};
 // colour theme: auto (follows Windows / the phone) -> light -> dark, remembered in this browser; the daisyUI themes
 // "light" and "dark" (styles/app.css), none set follows the system. Icons: [svg paths, label]
 const THEMES = {auto: ['<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/>', "Theme: automatic (follows your system)"],
@@ -130,7 +132,7 @@ class Router {
     // are back, else a page that just fits jumps to the top
     const main = $("#main"), y = window.scrollY;
     if (same) main.style.minHeight = main.offsetHeight + "px";
-    this.syncButton();
+    statusBar.render();
     athleteMenu.label();
     main.innerHTML = (S.code_stale ? `<div class="card proposal" style="margin-bottom:12px"><b>goodpush was updated since this app started.</b>
     Restart it (stop it, then <code>goodpush app</code>) to use the new version; until then the app, rides started
@@ -150,14 +152,6 @@ class Router {
     with the code shown here: it will read and change your training data.
     <div class="row" style="margin-top:8px"><button class="btn primary" data-peer-allow="1">Allow</button>
       <button class="btn" data-peer-allow="0">Deny</button></div></div>` : "";
-  }
-
-  // the top bar's Sync: on a computer that joined another one (Settings > Other computers)
-  syncButton() {
-    const b = $("#syncbtn"), joined = (S.peers?.computers || []).filter((c) => c.can_start);
-    b.hidden = !joined.length || !LOCAL;
-    const last = joined.map((p) => p.last).filter(Boolean).sort().pop();
-    b.title = `Sync with ${joined.map((p) => p.label || p.name).join(", ")} now` + (last ? ` (last ${last.replace("T", " ")})` : "");
   }
 
   // wiring
@@ -194,7 +188,7 @@ themes.lastScheme.addEventListener?.("change", () => router.render());
 document.addEventListener("DOMContentLoaded", () => {
   themes.setTheme(themes.theme());
   $("#themebtn").addEventListener("click", () => { const k = Object.keys(THEMES); themes.setTheme(k[(k.indexOf(themes.theme()) + 1) % k.length]); });
-  $("#syncbtn").addEventListener("click", () => api.action({action: "peer_sync_all"}, "Syncing…"));
+  statusBar.wire();
   athleteMenu.wire();
   quitButton.wire();
   moreMenu.wire();

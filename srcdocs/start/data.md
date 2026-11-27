@@ -10,12 +10,12 @@ Garmin's **Personal API** is Garmin's official, read-only way to get your own da
 1. In Garmin Connect on the web open **Settings > Personal API Key**
    (<https://connect.garmin.com/app/settings/personalApiToken>), create a key and pick how long it lasts (up to
    365 days). Garmin shows it only once and e-mails you before it expires.
-2. In GoodPush, click **Connect Garmin** on the Today page (or go to **Settings > Garmin connection**) and paste it.
+2. In GoodPush, click **Connect Garmin** in the setup list at the top right (or go to **Settings > Garmin connection**) and paste it.
 
 The key is kept in GoodPush's own folder on this computer ([where](../guide/privacy.md)), never in your GoodPush
 folder. GoodPush then pulls your last
 90 days: rides with their original .fit files, sleep, resting HR, HRV, stress, Body Battery, steps and weight.
-After that **Update now** on Today pulls only what's new. To have the app check by itself while it runs, set
+After that **Update now** (click the cloud icon at the top right) pulls only what's new. To have the app check by itself while it runs, set
 **Settings > Garmin connection > Also check Garmin by itself every ... hours** (`[garmin] auto_sync_hours`; 0, the
 default, = only when you press Update now).
 
@@ -25,7 +25,7 @@ From the command line: `goodpush garmin-key` (a hidden prompt; `--test` checks t
 ## 2. Bring in your whole history (an account export)
 
 90 days is enough to start, but thresholds, the model and the plan get much better with years of rides. Ask Garmin
-or Strava for your account export, then drop the zip onto the Today page (still zipped, as you downloaded it).
+or Strava for your account export, then drop the zip anywhere in the app (still zipped, as you downloaded it).
 
 * **Garmin:** sign in at garmin.com, **Account > Data Management > Export Your Data > Request Data Export**. Garmin
   e-mails a download link, usually within a day or two.
