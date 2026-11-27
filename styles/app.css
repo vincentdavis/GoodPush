@@ -38,7 +38,9 @@
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s7: #6250d6;
   --good: #18703d; --warn: #8a5a00; --bad: #b42f2f;
   --good-bg: #e5f4ea; --warn-bg: #fdf1d8; --bad-bg: #fbe5e5;
+  /* intensity, easy -> hard: yellow -> navy here, yellow -> blue in dark (the same hue order in both themes) */
   --z1: #e5cf52; --z2: #bcae6c; --z3: #948e77; --z4: #727274; --z5: #4f576c; --z6: #243c6e; --z7: #00224e;
+  --on-z1: #0b0b0b; --on-z3: #0b0b0b; --on-z5: #fcfcfb; --on-z7: #fcfcfb;   /* text on those colours */
 }
 @plugin "./vendor/daisyui-theme.mjs" {
   name: "dark";
@@ -60,7 +62,8 @@
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s7: #9085e9;
   --good: #3fb06d; --warn: #e0a32a; --bad: #e66767;
   --good-bg: #16301f; --warn-bg: #33270c; --bad-bg: #3a1a1a;
-  --z1: #3b496c; --z2: #5b606e; --z3: #777777; --z4: #979177; --z5: #b9ab6d; --z6: #dcc859; --z7: #fee838;
+  --z1: #d8c24e; --z2: #b3a76a; --z3: #918e7c; --z4: #7b7f8c; --z5: #6b7ea6; --z6: #5f84c8; --z7: #6a94f0;
+  --on-z1: #121211; --on-z3: #121211; --on-z5: #121211; --on-z7: #121211;
 }
 
 :root { --radius: 14px; --nav-h: 64px }
@@ -767,3 +770,9 @@ details.setsec[open] > summary { border-bottom:1px solid var(--grid); border-rad
 .maint p { margin:0 }
 .maint .btn { width:100% }
 @media (max-width:640px) { .maint { grid-template-columns:1fr; gap:4px } .maint p { margin-bottom:10px } }
+
+/* Model page: the ranges verdict at the top, the run button under it */
+.mdverdict { display:flex; flex-direction:column; gap:10px; margin-bottom:6px }
+.mdv-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 12px }
+.mdv-say { color:var(--ink2); font-size:14px; flex:1 1 320px; min-width:0 }
+.status.gray { background:var(--surface2); color:var(--ink2) }

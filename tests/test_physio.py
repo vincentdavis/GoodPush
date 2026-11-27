@@ -1645,3 +1645,23 @@ def test_compiled_code_kept_apart_by_compression(tmp_path, monkeypatch):
     assert set_to["jax_compilation_cache_dir"] == str(tmp_path / PhysioRun.cache_codec())
     assert sorted(p.name for p in tmp_path.iterdir()) == ["zlib"]
     assert (tmp_path / "zlib" / "jit_g-def-cache").exists()
+
+
+def test_a_nuts_run_says_how_far_it_is_while_it_holds_the_lock(tmp_path):
+    """PhysioRun.tracked keeps PROGRESS up to date; nuts_progress reads it only while a run holds LOCK
+    (the Model page shows a run started from a terminal, or the weekly refresh)."""
+    from filelock import FileLock
+    from goodpush.models.physio import PhysioRun
+    run = PhysioRun.__new__(PhysioRun)
+    run.processed = tmp_path
+    said = []
+    with FileLock(str(tmp_path / PhysioRun.LOCK)):
+        say = run.tracked(said.append, "full")
+        say("NUTS: warm-up 1-40 of 400")
+        p = PhysioRun.nuts_progress(tmp_path)
+        assert p["kind"] == "full" and p["line"] == "NUTS: warm-up 1-40 of 400" and p["t"] >= p["started"]
+        run.untrack()
+        assert PhysioRun.nuts_progress(tmp_path) is None              # held, but nothing said: nothing to show
+    say("after the run")
+    assert PhysioRun.nuts_progress(tmp_path) is None                  # no run holds LOCK
+    assert said[-1] == "after the run" and said[0].startswith("physio model: starting")

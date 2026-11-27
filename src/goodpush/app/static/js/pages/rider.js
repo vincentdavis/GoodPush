@@ -26,8 +26,8 @@ function heatColour(f, r = HEAT_RAMP) {
 // what each kind of training does for you (models.physio.TrainingResponse): per domain a colour (the zone scale,
 // every other step), a short name and the label colour on it; its watts today come
 // from the model's LT1 / CP / MAP
-export const DOMAIN = {z1: ["--z1", "Easy", "--ink"], z2: ["--z3", "Tempo – threshold", "--ink"], z3: ["--z5", "VO2max", "--surface"],
-  z4: ["--z7", "Short hard efforts", "--surface"], sprint: ["--muted", "Sprints", "--surface"]};
+export const DOMAIN = {z1: ["--z1", "Easy", "--on-z1"], z2: ["--z3", "Tempo – threshold", "--on-z3"], z3: ["--z5", "VO2max", "--on-z5"],
+  z4: ["--z7", "Short hard efforts", "--on-z7"], sprint: ["--muted", "Sprints", "--surface"]};
 export const DOMAIN_ORDER = ["z1", "z2", "z3", "z4", "sprint"];   // long rides: endurance hours (the model has no own effect)
 const LT1_TIP = "First (aerobic) threshold: below it you can ride for hours; easy rides stay below it.\n• From DFA alpha1 crossing 0.75 in steady riding (chest strap), or a ramp test\n• With the physiology model: from all your evidence\n• Each reading: Model > Threshold readings";
 const CP_TIP = "Critical power: the most you can hold without tiring quickly, about LT2.\n• Above it you use up W′, a limited store\n• FTP (~1-hour power) sets plan targets and each ride's TSS\n• From the physiology model, else your best 3-20 min of 90 days (a floor unless all-out)";

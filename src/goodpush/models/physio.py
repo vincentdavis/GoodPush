@@ -357,6 +357,8 @@ class PhysioRun:
     RECENT_DAYS = 28                 # these last days may change (late syncs) without a full refit
     JAX_CACHE = "jax_cache"          # processed/: compiled model code (this machine and jax version only)
     LOCK = "physio_nuts.lock"        # held by a NUTS run (full or refresh): one at a time (peer sync skips *.lock)
+    PROGRESS = "physio_nuts_progress.log"   # while LOCK is held: its start and last progress line (the Model page
+                                            # shows a run started elsewhere; peer sync skips *.log)
     SEVERE = "severe"                # the illnesses (models.illness severity) the model allows a larger change in
     FULL_RUN = "goodpush physio --nuts --samples 2500 --ess 400 --max-minutes 540"   # what to run for new draws
 
@@ -486,6 +488,43 @@ class PhysioRun:
             return True
         lock.release()
         return False
+
+    @classmethod
+    def nuts_progress(cls, processed) -> dict | None:
+        """the NUTS run holding LOCK (any process): {"kind" (full | refresh), "started", "t" (epoch s), "line" (its
+        last progress line)}; None when no run holds it, or it hasn't said anything yet."""
+        import json
+        if not cls.nuts_running(processed):
+            return None
+        try:
+            return json.loads((Path(processed) / cls.PROGRESS).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+
+    def tracked(self, progress, kind: str):
+        """`progress` that also keeps PROGRESS up to date (call with LOCK held; untrack() when the run ends)."""
+        import functools
+        import time
+        say = functools.partial(self.said, progress, kind, time.time())
+        say("physio model: starting the sampling run ...")
+        return say
+
+    def said(self, progress, kind: str, started: float, line: str) -> None:
+        """one progress line: passed on, and written to PROGRESS (tracked)."""
+        import json
+        import time
+        progress(line)
+        path = self.processed / self.PROGRESS
+        try:
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"kind": kind, "started": started, "t": time.time(), "line": str(line)}),
+                           encoding="utf-8")
+            tmp.replace(path)
+        except OSError:
+            pass
+
+    def untrack(self) -> None:
+        (self.processed / self.PROGRESS).unlink(missing_ok=True)
 
     @staticmethod
     def priors() -> str:
@@ -664,8 +703,11 @@ class PhysioRun:
             from filelock import FileLock, Timeout
             try:
                 with FileLock(str(self.processed / self.LOCK), timeout=0):
-                    return self.fitted(samples, maxiter, progress, data, model, nuts, fresh, target_ess,
-                                       max_minutes, warmup)
+                    try:
+                        return self.fitted(samples, maxiter, self.tracked(progress, "full"), data, model, nuts,
+                                           fresh, target_ess, max_minutes, warmup)
+                    finally:
+                        self.untrack()
             except Timeout:
                 raise RuntimeError("another NUTS run of this model is going on (a refresh, or a full run): "
                                    "try again when it's done") from None
@@ -732,7 +774,10 @@ class PhysioRun:
         from filelock import FileLock, Timeout
         try:
             with FileLock(str(self.processed / self.LOCK), timeout=0):
-                return self.refreshed(progress)
+                try:
+                    return self.refreshed(self.tracked(progress, "refresh"))
+                finally:
+                    self.untrack()
         except Timeout:
             progress("physio model: another NUTS run is going on: no refresh now")
             return None

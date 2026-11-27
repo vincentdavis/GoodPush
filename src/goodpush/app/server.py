@@ -527,7 +527,20 @@ class FullModelRun:
                 "steps": len(self.STAGES), "elapsed": round(now - self.started) if self.stage else None,
                 "stage_elapsed": round(now - self.stage_started) if self.stage else None,
                 "last": self.last_line(proj) if self.stage or self.result else "", "result": self.result,
-                "busy": "" if self.stage else self.busy(proj), "log": str(proj.logs / self.LOG)}
+                "busy": "" if self.stage else self.busy(proj), "log": str(proj.logs / self.LOG),
+                "other": None if self.stage else self.other(proj)}
+
+    @staticmethod
+    def other(proj) -> dict | None:
+        """a NUTS run started elsewhere (a terminal's, or the weekly ranges refresh): its kind, start and last
+        progress line (PhysioRun.PROGRESS), with its age in seconds; None when there is none."""
+        from ..models.physio import PhysioRun
+        p = PhysioRun.nuts_progress(proj.processed)
+        if not p:
+            return None
+        now = time.time()
+        return {"kind": p.get("kind", ""), "line": p.get("line", ""), "elapsed": round(now - float(p.get("started", now))),
+                "quiet": round(now - float(p.get("t", now)))}
 
 
 UPLOAD_MAX = 20 * 1024 ** 3       # bytes: an account export with years of data is a few GB
