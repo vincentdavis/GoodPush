@@ -57,26 +57,40 @@ class PhysioInputs:
     ILLNESS_NOISE = 5.0
     ILLNESS_AFTER_DAYS = 7
 
-    @staticmethod
-    def start(acts: pd.DataFrame, daily: pd.DataFrame) -> pd.Timestamp:
+    @classmethod
+    def start(cls, acts: pd.DataFrame, daily: pd.DataFrame, since_days: int = 0) -> pd.Timestamp:
         """the model's first day: your first ride with power (else the first day). Months of rides without power
-        before it left the starting state to its prior: an FTP setting from those months read as a career best."""
-        if "has_power" not in acts:
-            return daily.index[0]
-        r = acts[acts["sport"].eq("ride") & acts["has_power"].fillna(False).astype(bool)]
-        first = pd.to_datetime(r["date"]).min().normalize() if len(r) else None
-        return first if first is not None and first >= daily.index[0] else daily.index[0]
+        before it left the starting state to its prior: an FTP setting from those months read as a career best.
+        since_days ([physio] since_days; 0 = all your data): no earlier than `window_start`."""
+        first = daily.index[0]
+        if "has_power" in acts:
+            r = acts[acts["sport"].eq("ride") & acts["has_power"].fillna(False).astype(bool)]
+            ride = pd.to_datetime(r["date"]).min().normalize() if len(r) else None
+            first = ride if ride is not None and ride >= first else first
+        if since_days and len(daily):
+            first = max(first, cls.window_start(pd.Timestamp(daily.index[-1]), since_days))
+        return first
+
+    @staticmethod
+    def window_start(last: pd.Timestamp, since_days: int) -> pd.Timestamp:
+        """the first day of the last `since_days` days up to `last` (your newest data day), moved back to the start
+        of its quarter (1 Jan, 1 Apr, 1 Jul, 1 Oct): the model's weekly noise terms count from its first day, so a
+        start that moved every day would make every day's fit a full one and drop the ranges' draws. It moves four
+        times a year instead (each time: a full fit, and the ranges need a full run)."""
+        day = (last - pd.Timedelta(days=int(since_days) - 1)).normalize()
+        return pd.Timestamp(year=day.year, month=3 * ((day.month - 1) // 3) + 1, day=1)
 
     @classmethod
     def build(cls, acts: pd.DataFrame, daily: pd.DataFrame, ftp_history: dict | None, lthr: float,
               intervals: pd.DataFrame | None = None, max_hr: float | None = None,
-              illnesses: list | None = None, severe=None) -> PhysioData:
+              illnesses: list | None = None, severe=None, since_days: int = 0) -> PhysioData:
         """intervals: models.intervals.IntervalLog (steady reps for the heart-rate curve), if there is one; max_hr: your
         maximum heart rate (efforts that reached it are all-out: metrics.effort_hr); illnesses: severe illnesses as
         (onset, comeback) dates (`noise_scale`). Starts at the first ride with power (`start`).
         severe: metrics.severe_hr.SevereSplit - the rides' seconds with heart rate by their evidence of being severe
-        (hr_hist_h); None: none (evidence 0, the power edges alone)."""
-        daily = daily.loc[cls.start(acts, daily):]
+        (hr_hist_h); None: none (evidence 0, the power edges alone). since_days: only about the last this many days
+        (`start`; 0 = all)."""
+        daily = daily.loc[cls.start(acts, daily, since_days):]
         days = pd.DatetimeIndex(daily.index)
         rides = acts[acts["sport"].eq("ride")]
         dates = pd.to_datetime(rides["date"])
@@ -346,9 +360,13 @@ class PhysioRun:
     SEVERE = "severe"                # the illnesses (models.illness severity) the model allows a larger change in
     FULL_RUN = "goodpush physio --nuts --samples 2500 --ess 400 --max-minutes 540"   # what to run for new draws
 
-    def __init__(self, proj):
+    def __init__(self, proj, since_days: int | None = None):
+        """since_days: fit on about the last this many days only (`goodpush physio --since-days`); None: [physio]
+        since_days (0 or unset: all your data)."""
         self.proj = proj
         self.processed = proj.processed
+        self._since_days = since_days
+        self._start = None                   # the model's first day, once `inputs` has read the data
         self.keep_compiled(self.processed / self.JAX_CACHE)
 
     @staticmethod
@@ -379,8 +397,21 @@ class PhysioRun:
         max_hr = float(info.get("max_hr") or ath.get("max_hr") or 0) or None
         from ..metrics.severe_hr import SevereSplit
         from .intervals import IntervalLog
-        return PhysioInputs.build(acts, daily, (self.proj.cfg.get("ftp") or {}).get("history") or {}, lthr,
-                                  IntervalLog.load(self.processed), max_hr, ill, SevereSplit(self.processed))
+        data = PhysioInputs.build(acts, daily, (self.proj.cfg.get("ftp") or {}).get("history") or {}, lthr,
+                                  IntervalLog.load(self.processed), max_hr, ill, SevereSplit(self.processed),
+                                  self.since_days)
+        self._start = str(data.days[0]) if len(data.days) else None
+        return data
+
+    @property
+    def since_days(self) -> int:
+        """fit on about the last this many days only (PhysioInputs.window_start); 0 = all your data."""
+        if self._since_days is not None:
+            return max(int(self._since_days), 0)
+        try:
+            return max(int((self.proj.cfg.get("physio") or {}).get("since_days") or 0), 0)
+        except (TypeError, ValueError):
+            return 0
 
     def stored(self) -> dict | None:
         """the saved fit, if it was made with this noise period (else its noise terms mean other weeks) and these
@@ -393,6 +424,8 @@ class PhysioRun:
             return None
         if int(st.get("noise_weeks", -1)) != NOISE_WEEKS or str(st.get("states", "")) != self.structure():
             return None
+        if self._start is not None and self.first_day(st) not in (None, self._start):
+            return None                            # another first day ([physio] since_days): its noise weeks are others
         st["names"] = st["names"].tolist()
         st["draws_day"] = str(st.get("draws_day", st.get("full_date", "")))   # (full_date: before 2026-11-10)
         if "samples" not in st:                    # the draws, if this machine has the ones made with this fit
@@ -441,6 +474,15 @@ class PhysioRun:
         """what the model's states are (names and version): a stored fit with another one is not reused."""
         from ..physio.model import STATES, VERSION
         return ",".join(STATES) + f"|v{VERSION}"
+
+    @staticmethod
+    def first_day(st: dict) -> str | None:
+        """the stored fit's first day (from its last day and its number of days), None if it doesn't say."""
+        try:
+            last = np.datetime64(str(st["day"]), "D")
+            return str(last - np.timedelta64(int(st["days"]) - 1, "D"))
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def warm_start(self, model) -> np.ndarray | None:
         """the last fit's parameters on this model's vector (new weeks / names at their prior mean)."""

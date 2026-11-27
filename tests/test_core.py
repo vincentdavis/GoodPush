@@ -2331,6 +2331,38 @@ def test_full_model_run_samples_then_backtests(tmp_path: Path, monkeypatch):
     assert server.FullModelRun.file_day(tmp_path / "none.json") is None
 
 
+def test_app_fit_from_scratch_is_refused_during_a_sampling_run(tmp_path: Path):
+    """Settings → Data → Fit the model from scratch (action physio_fresh) drops the NUTS checkpoint and the draws:
+    never while a sampling run holds the lock - refused with the reason, the checkpoint left as it was."""
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+    from filelock import FileLock
+    from goodpush.app.server import make_handler
+    from goodpush.config import init_project, load_project
+    from goodpush.models.physio import PhysioRun
+    init_project(tmp_path)
+    proj = load_project(tmp_path)
+    proj.processed.mkdir(parents=True, exist_ok=True)
+    checkpoint = proj.processed / PhysioRun.CHECKPOINT
+    checkpoint.write_bytes(b"a stopped run")
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(proj, "k" * 20, lan=False, warm=False))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/api/action",
+                                 json.dumps({"action": "physio_fresh"}).encode(),
+                                 {"Content-Type": "application/json", "X-GoodPush": "1"})
+    try:
+        with FileLock(str(proj.processed / PhysioRun.LOCK)):
+            with pytest.raises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(req)
+        assert e.value.code == 400 and "sampling run" in json.loads(e.value.read())["error"]
+        assert checkpoint.read_bytes() == b"a stopped run"
+    finally:
+        srv.shutdown()
+
+
 def test_app_state_never_starts_or_waits_for_a_refresh(tmp_path: Path, monkeypatch):
     """Hard rule (2026-11-10): nothing the app serves waits for the refresh. /api/state reads the stored fit (mode and
     ranges, with the ranges' date) and neither starts nor runs one; only the minute loop does, after a page."""

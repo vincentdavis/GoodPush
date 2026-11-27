@@ -441,6 +441,26 @@ class FullModelRun:
             return "Not during a ride."
         return ""
 
+    def start_fresh(self, proj):
+        """Settings → Data → Fit the model from scratch (`fresh_fit`) as a job; raises ValueError (busy's reason)
+        when it can't start now - never while a NUTS run (its checkpoint) or another job goes on."""
+        why = self.busy(proj)
+        if why:
+            raise ValueError(why)
+        return self.jobs.start("Fitting the model from scratch", lambda log: self.fresh_fit(proj, log))
+
+    @staticmethod
+    def fresh_fit(proj, log) -> None:
+        """`goodpush physio --fresh` (the posterior mode from the priors, not the last fit; drops a NUTS run's
+        checkpoint and the stored draws, so no ranges until the Model page's next full run), then the analysis, plan
+        and reports from that fit."""
+        from ..models.physio import PhysioRun
+        run = PhysioRun(proj)
+        run.same_code()
+        log("Fitting the model from its priors (not the last fit) ...")
+        run.fit(fresh=True, progress=log)
+        _reanalyse(proj, log)
+
     def start(self) -> None:
         """raises ValueError (busy's reason) when it can't start now."""
         proj = self.project()
@@ -1228,18 +1248,6 @@ def _reanalyse(proj, log):
     log("Done.")
 
 
-def _physio_fresh(proj, log):
-    """Settings → Data → Fit the model from scratch: `goodpush physio --fresh` (the posterior mode from the priors,
-    not the last fit; drops a NUTS run's checkpoint and the stored draws, so no ranges until the Model page's next
-    full run), then the analysis, plan and reports from that fit."""
-    from ..models.physio import PhysioRun
-    run = PhysioRun(proj)
-    run.same_code()
-    log("Fitting the model from its priors (not the last fit) ...")
-    run.fit(fresh=True, progress=log)
-    _reanalyse(proj, log)
-
-
 def _add_ride(proj, key: str, ride_id: str, log):
     """a ride the ride window saved: into your rides, linked to its session, then analysis and the plan."""
     from ..ingest import add_ride
@@ -1880,11 +1888,8 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                               queue=True)
         if a == "rebuild":
             return jobs.start("Rebuilding everything", lambda log: _full_rebuild(proj, log))
-        if a == "physio_fresh":                # Settings → Data: the model from its priors (_physio_fresh)
-            why = full_run.busy(proj)           # never while a NUTS run (its checkpoint) or another job goes on
-            if why:
-                raise ValueError(why)
-            return jobs.start("Fitting the model from scratch", lambda log: _physio_fresh(proj, log))
+        if a == "physio_fresh":                # Settings → Data: the model from its priors
+            return full_run.start_fresh(proj)
         if a in ("workout_text", "workout_format"):     # the workout builder: text <-> steps (nothing saved)
             from ..planning.builder import WorkoutText
             from ..planning.steps import items_from_dicts

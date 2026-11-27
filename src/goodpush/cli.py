@@ -559,7 +559,7 @@ def cmd_physio(args):
     from .models.physio import PhysioRun
     from .progress import Progress, Tee
     proj = _proj(args)
-    run = PhysioRun(proj)
+    run = PhysioRun(proj, args.since_days)
     kind = ("physio-backtest" if args.backtest else "physio-coverage" if args.coverage else "physio-refresh"
             if args.refresh else "physio-nuts" if args.nuts else "physio")
     with Tee.into(proj.logs / f"{kind}_{time.strftime('%Y-%m-%d_%H%M')}.log"):
@@ -765,6 +765,9 @@ def main(argv=None):
     sp.add_argument("--refresh", action="store_true",
                     help="today's ranges by a short NUTS run from the last run's draws (minutes; needs the draws "
                          "of a full --nuts run of this model)")
+    sp.add_argument("--since-days", type=int, default=None, metavar="DAYS",
+                    help="fit on about the last DAYS days only (365 = a year; from the start of that quarter); "
+                         "default: Settings > Physiological model ([physio] since_days), 0 = all your data")
     sp.add_argument("--maxiter", type=int, default=15000)
     sp.add_argument("--ahead", type=int, default=2, help="predict all-out power this many days ahead")
     sp.add_argument("--backtest", action="store_true",
