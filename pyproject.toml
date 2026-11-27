@@ -7,7 +7,7 @@ name = "goodpush"
 dynamic = ["version"]        # from the git tag (vX.Y.Z, semantic versioning): hatch-vcs
 description = "Personal cycling training analysis: Strava + Garmin -> power profile, training load, progress drivers and overreaching."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"      # garminconnect needs 3.12; 3.14 is the default (.python-version, uv)
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Leon Foks" }]
@@ -22,7 +22,6 @@ dependencies = [
     "platformdirs>=4",
     "tomlkit>=0.13",
     "tzdata",
-    "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]

@@ -1,5 +1,6 @@
 # PyInstaller: the installed goodpush app (one folder; on macOS a .app). Build with
-#   pip install -e ".[build]" && cd packaging && python make_icon.py && python notices.py && pyinstaller goodpush.spec --noconfirm
+#   uv sync --extra build && cd packaging && uv run python make_icon.py && uv run python notices.py && uv run pyinstaller goodpush.spec --noconfirm
+#   (or, in a pip / conda environment: pip install -e ".[build]", then the same commands without "uv run")
 # The installers wrap dist/ (packaging/README.md); GitHub Actions builds every platform (.github/workflows/build.yml).
 import sys
 
