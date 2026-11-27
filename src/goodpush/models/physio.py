@@ -373,13 +373,36 @@ class PhysioRun:
     def keep_compiled(path) -> None:
         """JAX keeps its compiled code in `path`, so a new app or CLI process loads it instead of compiling
         again. Specific to this machine and jax version (jax keys it by both), so never in git. A cache folder you set
-        yourself (JAX_COMPILATION_CACHE_DIR; the tests share one across runs) wins."""
+        yourself (JAX_COMPILATION_CACHE_DIR; the tests share one across runs) wins.
+
+        One subfolder per compression (`cache_codec`): jax names an entry the same whether it was compressed with
+        Python 3.14's zstd or with zlib, so the installed app (Python 3.12) and a checkout (3.14) sharing one folder
+        read each other's entries with the wrong one ("Unable to decompress Zstandard data"). Entries from before the
+        subfolders, a mix of both, are removed."""
         import os
+        from pathlib import Path
         import jax
         if os.environ.get("JAX_COMPILATION_CACHE_DIR"):
             return
-        jax.config.update("jax_compilation_cache_dir", str(path))
+        path = Path(path)
+        for old in [*path.glob("*-cache"), *path.glob("*-atime")]:
+            if old.is_file():
+                old.unlink(missing_ok=True)
+        jax.config.update("jax_compilation_cache_dir", str(path / PhysioRun.cache_codec()))
         jax.config.update("jax_persistent_cache_min_compile_time_secs", 0.0)   # the many small ones add up
+
+    @staticmethod
+    def cache_codec() -> str:
+        """What jax compresses its cache entries with, in its own order: Python 3.14's compression.zstd, else the
+        zstandard package, else zlib."""
+        import importlib
+        for codec, module in (("zstd", "compression.zstd"), ("zstandard", "zstandard")):
+            try:
+                importlib.import_module(module)
+                return codec
+            except ImportError:
+                continue
+        return "zlib"
 
     def inputs(self) -> PhysioData:
         import json

@@ -1626,3 +1626,22 @@ def test_physio_load_chooses_key_sessions():
         assert set(picked) == set(slots) and set(picked.values()) <= set(MIX_TYPES)
         assert r.objective <= r.start
     assert PhysioLoad(m, m.spec.mean, 250.0).choose_sessions(wos, [], {}, {}) == ({}, None)
+
+
+def test_compiled_code_kept_apart_by_compression(tmp_path, monkeypatch):
+    """jax names a cache entry the same for zstd and zlib, so each compression gets its own folder (the installed app
+    on Python 3.12 and a 3.14 checkout shared one and read each other's entries wrong); entries from before go."""
+    from jax._src import compilation_cache as cc
+    from goodpush.models.physio import PhysioRun
+    assert PhysioRun.cache_codec() == ("zstd" if cc.zstd else "zstandard" if cc.zstandard else "zlib")
+    set_to = {}
+    monkeypatch.delenv("JAX_COMPILATION_CACHE_DIR", raising=False)
+    monkeypatch.setattr(jax.config, "update", lambda name, value: set_to.__setitem__(name, value))
+    (tmp_path / "jit_f-abc-cache").write_bytes(b"x")
+    (tmp_path / "jit_f-abc-atime").write_bytes(b"x")
+    (tmp_path / "zlib").mkdir()
+    (tmp_path / "zlib" / "jit_g-def-cache").write_bytes(b"x")
+    PhysioRun.keep_compiled(tmp_path)
+    assert set_to["jax_compilation_cache_dir"] == str(tmp_path / PhysioRun.cache_codec())
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["zlib"]
+    assert (tmp_path / "zlib" / "jit_g-def-cache").exists()
