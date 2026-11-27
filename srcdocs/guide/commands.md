@@ -15,7 +15,7 @@ options.
 | `goodpush ingest [--force]` | only read new or changed ride files |
 | `goodpush analyze` | rebuild the analysis and reports from what's already read (fast) |
 | `goodpush plan [--date D]` | re-plan (+ the calendar file and watch workouts) |
-| `goodpush physio [--nuts ...]` | fit the physiological model; `--nuts` for its ranges ([details](plan.md#the-physiological-model)) |
+| `goodpush physio [--nuts ...]` | fit the physiological model; `--nuts` for its ranges, `--since-days N` on the last N days only ([details](plan.md#the-physiological-model)) |
 | `goodpush ride [scan] [--free] [--session D] [--pick] [--sim]` | ride a session on the trainer (ANT+) with the trainer bar |
 | `goodpush summary` | print the headline numbers |
 | `goodpush illness` | list the sickness notes found in your rides and the illnesses built from them |

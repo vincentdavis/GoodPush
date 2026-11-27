@@ -122,7 +122,14 @@ goodpush physio --nuts --samples 2500 --ess 400 --max-minutes 540
 
 It usually finishes within an hour, 9 hours at most. After that the app refreshes the ranges by itself about once a
 week, in the background at low priority (`[physio] ranges_every_days`, 0 = never; Settings > Physiological model).
-A full run is only needed again when the model's version changes.
+A full run is only needed again when the model's version changes, or when its first day moves (below).
+
+**Only your recent rides.** The model always fits on rides only (runs, strength and the rest never reach it), from
+your first ride with power. To leave out older years, set Settings > Physiological model > *Fit on the last (days)*
+(`[physio] since_days`, e.g. 1825 = the last 5 years; 0 = all your data), or try it once with
+`goodpush physio --since-days 1825`. The first day goes back to the start of its quarter (1 Jan, 1 Apr, 1 Jul,
+1 Oct) and moves on four times a year rather than every day; each move is a full fit, and the ranges need the full
+run above again.
 
 Everything the model finds is about one person's data and observational: treat its training responses as hypotheses.
 How it works: [the model pages](../model/overview.rst).

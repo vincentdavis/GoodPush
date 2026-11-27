@@ -38,7 +38,8 @@ DEFAULTS = {
              "ftp": 0},
     "incyclist": {"sync": False, "folder": ""},
     "garmin": {"auto_sync_hours": 0},
-    "physio": {},                    # ranges_every_days: app.server.DailyRanges.every_days (7; old daily_ranges)
+    "physio": {"since_days": 0},     # since_days: models.physio.PhysioRun.since_days (0: all your data);
+                                     # ranges_every_days: app.server.DailyRanges.every_days (7; old daily_ranges)
     "sync": {"home": "", "serve": True, "every_hours": 2.0},
     "ride": {"resistance": 30, "bike_kg": 9, "opacity": 0.6, "scale": 1.0, "x": -1, "y": -1, "click_through": False},
     "events": [],
@@ -143,6 +144,11 @@ SETTINGS = {
         setting("click_through", "bool", "Click-through", "clicks go to the window underneath (off from the tray icon)"),
     ]},
     "physio": {"title": "Physiological model", "then": "nothing", "fields": [
+        setting("since_days", "int", "Fit on the last (days)",
+                "only your rides of about this many days, e.g. 365 = the last year, 1825 = the last 5 years; the "
+                "start moves back to the beginning of its quarter (1 Jan, 1 Apr, 1 Jul, 1 Oct) and on four times a "
+                "year. A change means a full fit at the next update, and the ranges need a full run (Model page). "
+                "0 = all your data", lo=30, hi=20000, zero=True),
         setting("ranges_every_days", "int", "Refresh the ranges every (days)",
                 "on the home computer the app re-samples the model's 5-95 % ranges when they are this many days "
                 "older than the data, or sooner when a best-fit number leaves its range (about 10 minutes in the "

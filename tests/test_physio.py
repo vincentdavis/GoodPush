@@ -179,6 +179,47 @@ def test_the_model_starts_at_the_first_ride_with_power():
     assert PhysioInputs.start(acts.drop(columns="has_power"), daily) == days[0]
 
 
+def test_since_days_fits_on_the_recent_rides_from_the_start_of_a_quarter():
+    """2026-11-27: [physio] since_days - only about the last N days; the first day moves quarterly, not daily (the
+    weekly noise terms count from it, so a daily move would make every update a full fit)."""
+    from goodpush.models.physio import PhysioInputs
+    days = pd.date_range("2019-01-01", "2026-11-27")
+    acts = pd.DataFrame({"sport": ["ride", "ride"], "date": [days[10], days[-1]], "has_power": [True, True]})
+    daily = pd.DataFrame(index=days)
+    assert PhysioInputs.start(acts, daily) == days[10]                                    # 0: all your data
+    assert PhysioInputs.start(acts, daily, 365) == pd.Timestamp("2025-10-01")             # 2025-11-28 -> its quarter
+    assert PhysioInputs.start(acts, daily, 1825) == pd.Timestamp("2021-10-01")
+    assert PhysioInputs.start(acts, daily, 100000) == days[10]                            # longer than your data
+    for last in pd.date_range("2026-09-30", "2026-12-30"):                                # the same for a quarter
+        assert PhysioInputs.window_start(last, 365) == pd.Timestamp("2025-10-01")
+    assert PhysioInputs.window_start(pd.Timestamp("2026-12-31"), 365) == pd.Timestamp("2026-01-01")   # then on
+
+
+def test_a_stored_fit_from_another_first_day_is_not_gone_on_from(tmp_path):
+    """[physio] since_days moved the first day: the stored fit's noise weeks count from another day, so warm-starting
+    or keeping its draws by name would shift them - a full fit instead."""
+    from types import SimpleNamespace
+    from goodpush.models.physio import PhysioRun
+    d = synthetic(n_days=84)
+
+    class Run(PhysioRun):
+        data = d
+
+        def inputs(self):
+            self._start = str(self.data.days[0])
+            return self.data
+
+    run = Run(SimpleNamespace(processed=tmp_path, reports=tmp_path, cfg={}))
+    run.inputs()
+    run.fit(maxiter=200)
+    assert run.first_day(run.stored()) == str(d.days[0]) and run.first_day({}) is None
+    run.data = d.window(28)                                        # four weeks later start
+    msgs = []
+    run.current(progress=msgs.append)
+    assert any("full fit" in m for m in msgs) and not any("new day(s)" in m for m in msgs)
+    assert run.first_day(run.stored()) == str(d.days[28])
+
+
 def test_a_test_counts_only_where_it_reached_your_recent_best():
     """2026-11-06: a 20-min FTP test's 5 s, a failed test's 20 min sat far below the recent best and were 'tests'."""
     from goodpush.models.physio import PhysioInputs
@@ -1381,8 +1422,13 @@ def test_an_illness_weeks_may_change_more():
 def test_severe_illnesses_from_the_analysis_reach_the_model(tmp_path, monkeypatch):
     """PhysioRun.inputs passes results.json's severe episodes (not milder ones) as illnesses."""
     from goodpush.models import physio as P
+    from types import SimpleNamespace
     seen = {}
-    monkeypatch.setattr(P.PhysioInputs, "build", classmethod(lambda cls, *a: seen.setdefault("ill", a[6])))
+
+    def build(cls, *a):
+        seen["ill"] = a[6]
+        return SimpleNamespace(days=[])
+    monkeypatch.setattr(P.PhysioInputs, "build", classmethod(build))
     monkeypatch.setattr(P.pd, "read_parquet", lambda p: pd.DataFrame())
     monkeypatch.setattr(P.PhysioRun, "keep_compiled", staticmethod(lambda path: None))
     import goodpush.models.intervals as I
