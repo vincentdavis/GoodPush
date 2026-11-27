@@ -77,7 +77,7 @@ class SettingsPage extends Page {
 
   <h2 class="setgroup">App and data</h2>
   ${toml(["ride", "ingest", "paths"])}
-  ${this.section("data", "Data and model", lastRun ? `last analysis ${esc(lastRun)}` : "Not analysed yet", `<div class="card">
+  ${this.section("data", "Data", lastRun ? `last analysis ${esc(lastRun)}` : "Not analysed yet", `<div class="card">
     <div class="maint">
       <div><button class="btn" data-act="rebuild">Rebuild everything</button></div>
       <p class="small muted">Re-read every ride file and re-analyse. Use it after importing a Strava or Garmin export.</p>
