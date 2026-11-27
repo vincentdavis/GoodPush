@@ -15,7 +15,7 @@ const SECTION_NOTE = {
   athlete: "Name, weight, heart rates, birth year",
   ftp: "Where your FTP comes from",
   load: "CTL / ATL and TSS without power",
-  physio: "How often the model's ranges are refreshed",
+  physio: "Which of your rides it fits on, how often its ranges are refreshed",
   events: "Illness, injury, travel",
   analysis: "Windows for progress and detection",
   ride: "The trainer overlay",
