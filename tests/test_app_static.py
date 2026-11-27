@@ -142,3 +142,19 @@ def test_the_stylesheet_is_built_from_the_pinned_tailwind_and_daisyui():
     css = (STATIC / "app.css").read_text(encoding="utf-8")
     assert css.startswith("/*! tailwindcss v4.3.5 ") and "daisyUI 5.8.3" in css
     assert (STATIC / "vendor" / "tailwindcss.LICENSE").is_file() and (STATIC / "vendor" / "daisyui.LICENSE").is_file()
+
+
+def test_questions_use_the_apps_dialog_not_the_browsers():
+    """confirm() / prompt() / alert() stop the page and look like the browser, not the app: every question goes
+    through Ask (controls.js), a <dialog> with a title and buttons that say what they do."""
+    native = re.compile(r"(?<![\w.$])(?:window\.)?(?:confirm|prompt|alert)\(")
+    method = re.compile(r"^  (?:async )?(?:confirm|prompt)\(\{.*\) \{$", re.M)        # Ask's own methods
+    found = []
+    for p in modules():
+        code = re.sub(r"//.*$", "", method.sub("", p.read_text(encoding="utf-8")), flags=re.M)
+        found += [f"{p.relative_to(JS)}: {m.group()}" for m in native.finditer(code)]
+    assert not found, found
+    controls = (JS / "controls.js").read_text(encoding="utf-8")
+    assert "export const ask = new Ask();" in controls and "d.showModal();" in controls
+    css = (STATIC / "app.css").read_text(encoding="utf-8")                       # its styles built in
+    assert "dialog.ask{" in css and "dialog.ask::backdrop{" in css

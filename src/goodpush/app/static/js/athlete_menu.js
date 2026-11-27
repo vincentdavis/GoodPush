@@ -3,6 +3,7 @@
 // then reloads whole (a move: a job, then the page reloads its data).
 import {api, S, toast} from "./api.js";
 import {$, esc, LOCAL} from "./util.js";
+import {ask} from "./controls.js";
 
 class AthleteMenu {
   open = false;
@@ -78,7 +79,8 @@ class AthleteMenu {
   // take an athlete off this computer: their sign-ins here go, their folder stays (the menu redraws, no reload)
   async remove(name) {
     const x = S.athletes.athletes.find((a) => a.name === name);
-    if (!confirm(`Remove ${name} from this computer?\n\nTheir sign-ins here (Garmin etc.) are deleted. Their folder stays:\n${x?.folder || ""}`)) return;
+    if (!await ask.confirm({title: `Remove ${name} from this computer?`, yes: "Remove", danger: true,
+      text: `Their sign-ins here (Garmin etc.) are deleted. Their folder stays:\n${x?.folder || ""}`})) return;
     const j = await api.query({action: "athlete_remove", name});
     if (!j) return;
     S.athletes = j.athletes;

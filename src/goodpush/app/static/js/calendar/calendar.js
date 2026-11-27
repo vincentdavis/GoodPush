@@ -2,6 +2,7 @@
 import {Page} from "../pages/page.js";
 import {api, S, toast} from "../api.js";
 import {$, addDays, css, esc, fmt, hhmm} from "../util.js";
+import {ask} from "../controls.js";
 import {hint, niceDate, today} from "../widgets.js";
 import {router} from "../main.js";
 import {sessionModal} from "./session.js";
@@ -105,11 +106,12 @@ class CalendarPage extends Page {
     if (router.route() === "calendar") router.render();
   }
 
-  clearMine() {                       // your unlocked changes from today on back to the plan (locked ones stay)
+  async clearMine() {                 // your unlocked changes from today on back to the plan (locked ones stay)
     const mine = Object.entries(this.CAL.planned).filter(([k, p]) => k.slice(0, 10) >= this.CAL.today && p.custom
       && !p.locked);
     if (!mine.length) { toast.show("No changes of yours to clear (locked ones stay: unlock them first)"); return; }
-    if (!confirm(`Give ${mine.length} day(s) you changed back to the plan? Locked ones stay.`)) return;
+    if (!await ask.confirm({title: `Give ${mine.length} day(s) back to the plan?`, yes: "Give them back", danger: true,
+      text: "The days you changed from today on go back to the plan's version. Locked days stay as they are."})) return;
     api.action({action: "clear_own"}, "Your changes cleared – updating the plan…");
   }
 

@@ -1,5 +1,5 @@
 // One ride: charts, selection, intervals, ramp / alpha1 cards (RidePage).
-import {Pref} from "../controls.js";
+import {ask, Pref} from "../controls.js";
 import {Page} from "./page.js";
 import {api, S, toast} from "../api.js";
 import {$, boxSigma, css, expSmooth, esc, fmt, hhmm, mmss} from "../util.js";
@@ -247,8 +247,9 @@ class RidePage extends Page {
   // a ride goodpush recorded is deleted for good; one from Strava / Garmin is left out (a sync can't bring it back)
   async deleteRide() {
     const a = this.RIDE, mine = a.id.startsWith("goodpush_");
-    if (!confirm(mine ? `Delete ${a.name || "this ride"} (${a.date})? Its file is removed for good.`
-      : `Delete ${a.name || "this ride"} (${a.date}) from goodpush? It stays on Strava / Garmin, but goodpush leaves it out from now on.`)) return;
+    if (!await ask.confirm({title: `Delete ${a.name || "this ride"} (${a.date})?`, yes: "Delete the ride", danger: true,
+      text: mine ? "Its file is removed for good."
+        : "It stays on Strava / Garmin, but goodpush leaves it out from now on."})) return;
     if (!await api.action({action: "delete_activity", id: a.id}, "Ride deleted – re-analysing…")) return;
     this.RIDE = null;
     if (calendarPage.CAL) { calendarPage.CAL.acts = calendarPage.CAL.acts.filter((x) => x.id !== a.id); calendarPage.CAL._m = null; }   // gone now; the re-analysis's

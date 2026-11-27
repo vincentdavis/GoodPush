@@ -1975,10 +1975,10 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
             own = PlanState.load(sp).own_on(season.changed_days(old, today()))
             if own and body.get("replan_own") is None:   # days you set yourself in the weeks that changed: ask first
                 first, last = (pd.Timestamp(k[:10]).strftime("%a %d %b") for k in (own[0], own[-1]))
-                return {"answer": "replan_own", "ask": (
+                return {"answer": "replan_own", "title": "Plan your own days again?", "ask": (
                     f"You set {len(own)} day(s) yourself (moved, added or resized) in the weeks this changes "
-                    f"({first} – {last}).\n\nOK: the planner plans them for the new season.\n"
-                    "Cancel: they stay as you set them.")}
+                    f"({first} – {last}).\n\nThe planner can plan them for the new season, or they can stay as "
+                    "you set them."), "yes": "Plan them again", "no": "Keep my days"}
             season.save(proj.root)
             with PlanState.open(sp) as st:
                 if body.get("replan_own"):
@@ -1994,7 +1994,7 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                 ask = (season.place_phase(Phase(**{k: v.get(k) for k in ("type", "start", "weeks", "name", "build_weeks", "hours")}), merge)
                        if a == "add_phase" else season.edit_phase(str(body.get("id")), v.get("start"), v.get("weeks"), merge))
                 if ask:
-                    return {"ask": ask}
+                    return {"ask": ask, "title": "Merge the phases?", "yes": "Merge them", "no": "Keep them apart"}
             elif a == "delete_phase":
                 season.delete_phase(str(body.get("id")))
             elif a == "add_event":
@@ -2377,7 +2377,8 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                     if full_run.running():
                         busy.append("The model run goes on by itself, without its backtest.")
                     if busy and not body.get("force"):
-                        return self._json({"ask": " ".join(busy) + "\n\nQuit goodpush anyway?"})
+                        return self._json({"title": "Quit goodpush anyway?", "ask": " ".join(busy), "yes": "Quit",
+                                           "no": "Keep it running", "danger": True})
                     self._json({"ok": True})
                     threading.Thread(target=self.server.shutdown, name="goodpush quit", daemon=True).start()
                     return None

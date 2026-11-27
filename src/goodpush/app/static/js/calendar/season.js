@@ -10,6 +10,7 @@
 // recovery weeks come from the server (cadence).
 import {api, S, toast} from "../api.js";
 import {$, addDays, css, esc} from "../util.js";
+import {ask} from "../controls.js";
 import {hint, niceDate} from "../widgets.js";
 import {BlockTimeline} from "../timeline.js";
 import {calendarPage} from "./calendar.js";
@@ -25,11 +26,11 @@ const SEASON_HELP = "Your season: blocks back to back\n" +
   "• Drop Recovery on a phase: a recovery week in it; drag recovery weeks within it\n" +
   "• Tapers come from your races; click a block to rename, set its hours or delete it\n" +
   "• 🔓 = changes not planned yet: lock 🔒 to plan them (Discard goes back)";
-const AUTO_ASK = "Replace your season with one planned back from your A races (base, build, specialty, recovery)? "
-  + "You can drag it around after.";
+const AUTO_ASK = "Your season is replaced with one planned back from your A races (base, build, specialty, "
+  + "recovery). You can drag it around after.";
 const GENERIC_TIP = "No A race ahead: 8 weeks of Base, then 4 of Build, from next Monday";
-const GENERIC_ASK = "Replace your season with a general 12-week plan from next Monday (8 weeks Base, then 4 weeks "
-  + "Build, a recovery week every 4th)? You can drag it around after, or add a race and auto-plan from it.";
+const GENERIC_ASK = "Your season is replaced with a general 12-week plan from next Monday: 8 weeks of Base, then 4 "
+  + "of Build, with a recovery week every 4th. You can drag it around after, or add a race and auto-plan from it.";
 
 class SeasonBlocks {
   blocks = null;        // edits not back from the server yet: [{id, type, name, weeks, recovery_weeks, hours}]
@@ -226,9 +227,10 @@ class SeasonBlocks {
       this.timeline.palette(c, () => ({id: null, type, name: "", weeks: NEW_WEEKS[type], hours: null,
         recovery_weeks: null}));
     });
-    $("#sbAuto")?.addEventListener("click", () => {
+    $("#sbAuto")?.addEventListener("click", async () => {
       const racing = this.racing();
-      if (!confirm(racing ? AUTO_ASK : GENERIC_ASK)) return;
+      if (!await ask.confirm({title: racing ? "Plan your season from your races?" : "Lay out a general plan?",
+        text: racing ? AUTO_ASK : GENERIC_ASK, yes: "Replace my season", danger: true})) return;
       this.discard();
       api.action({action: "autoplan_season"},
         `${racing ? "Season planned from your races" : "General plan laid out"} – updating the plan…`);
@@ -262,9 +264,10 @@ class SeasonBlocks {
     this.dirty = false; this.blocks = null; this.sel = null; this.redraw(); this.editor(); this.lockState();
   }
 
-  save() {                        // the whole season to the server; the re-plan brings it back
+  async save() {                  // the whole season to the server; the re-plan brings it back
     if (!this.blocks) return;
-    if (!this.blocks.length && !confirm("Remove every block? Nothing is planned without a season.")) return;
+    if (!this.blocks.length && !await ask.confirm({title: "Remove every block?", yes: "Remove them all", danger: true,
+      text: "Nothing is planned without a season."})) return;
     const body = {action: "season_blocks", start: this.start, blocks: this.blocks};
     this.dirty = false; this.lockState();         // the re-plan's reload brings the season back from the server
     api.action(body, "Season locked – updating the plan…")

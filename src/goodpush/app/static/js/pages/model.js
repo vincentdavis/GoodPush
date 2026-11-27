@@ -1,6 +1,6 @@
 // Model: can you trust the physio model - a verdict, today's numbers with their ranges, how its predictions sit next to
 // what you rode and measured, the sampler's details, folded (ModelPage).
-import {Lazy, Pref, Segmented} from "../controls.js";
+import {ask, Lazy, Pref, Segmented} from "../controls.js";
 import {Page} from "./page.js";
 import {api, S} from "../api.js";
 import {$, css, esc, fmt} from "../util.js";
@@ -92,15 +92,15 @@ class ModelRunCard {
   }
 
   async start() {
-    if (!confirm("Start a full sampling run and then the backtest?\n"
-      + "It usually takes about an hour at low priority (9 h at most); you can stop it any time.")) return;
+    if (!await ask.confirm({title: "Run sampling and the backtest?", yes: "Start the run",
+      text: "A full sampling run first, then the backtest. It usually takes about an hour at low priority "
+        + "(9 hours at most), and you can stop it any time."})) return;
     if (await api.action({action: "model_run"}, "Started: sampling, then the backtest")) this.poll();
   }
 
   async stop() {
-    if (!confirm("Stop the run? The sampling is saved up to its last checkpoint and goes on from there next time.")) {
-      return;
-    }
+    if (!await ask.confirm({title: "Stop the run?", yes: "Stop the run", no: "Keep it running",
+      text: "The sampling is saved up to its last checkpoint and goes on from there next time."})) return;
     if (await api.action({action: "model_run_stop"}, "Stopping…")) this.poll();
   }
 

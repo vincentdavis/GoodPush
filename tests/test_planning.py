@@ -217,7 +217,7 @@ def test_phase_dates_edited_into_free_weeks_and_merged_on_request():
     with pytest.raises(ValueError, match="overlaps Base"):
         s.edit_phase(a.id, "2026-11-02", 7)                                 # not over the next phase
     ask = s.place_phase(Phase(type="build", start="2026-10-19", weeks=2))   # right before the Build: same kind
-    assert "8-week phase" in ask and len(s.phases) == 2                    # asked, nothing changed yet
+    assert "8-week phase" in ask and "OK" not in ask and len(s.phases) == 2   # asked, nothing changed yet
     s.place_phase(Phase(type="build", start="2026-10-19", weeks=2), merge=True)
     assert [(p.id, p.start, p.weeks) for p in s.phases] == [(a.id, "2026-10-19", 8), (c.id, "2026-12-14", 4)]
     assert s.place_phase(Phase(type="build", start="2026-10-05", weeks=2, hours=8)) == ""   # other hours: no question

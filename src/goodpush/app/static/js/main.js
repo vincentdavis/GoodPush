@@ -1,5 +1,5 @@
 // goodpush app entry: the page registry, Router (render + wire), FormMemory, ThemeSwitch, start-up listeners.
-import {Pref} from "./controls.js";
+import {ask, Pref} from "./controls.js";
 import {api, jobs, S} from "./api.js";
 import {$, esc, LOCAL} from "./util.js";
 import {todayPage} from "./pages/today.js";
@@ -96,7 +96,7 @@ const moreMenu = new MoreMenu();
 class QuitButton {
   async quit() {
     let j = await api.query({action: "quit"});
-    if (j?.ask) j = confirm(j.ask) ? await api.query({action: "quit", force: true}) : null;
+    if (j?.ask) j = await api.answer(j) ? await api.query({action: "quit", force: true}) : null;
     if (!j?.ok) return;
     document.title = "goodpush stopped";
     $("#main").innerHTML = `<div class="card"><h2>goodpush has stopped</h2>

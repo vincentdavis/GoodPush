@@ -1,6 +1,7 @@
 // The workout builder (WorkoutBuilder): blocks on a timeline, or text (planning/builder.py does the parsing).
 import {api, S, toast} from "./api.js";
 import {esc, fmt, hhmm} from "./util.js";
+import {ask} from "./controls.js";
 import {adjustRow, niceDate, TYPE_LABEL, zoneVar} from "./widgets.js";
 import {calendarPage} from "./calendar/calendar.js";
 import {el} from "./charts.js";
@@ -193,7 +194,8 @@ class WorkoutBuilder {
     box.querySelector("#b-addnew")?.addEventListener("click", () => this.bAdd(null));
     box.querySelector("#b-save").addEventListener("click", () => this.bSave());
     box.querySelector("#b-del")?.addEventListener("click", async () => {
-      if (!confirm(`Delete ${this.BLD.title || "this workout"} from your workouts?`)) return;
+      if (!await ask.confirm({title: `Delete ${this.BLD.title || "this workout"}?`, text: "It goes from your workouts.",
+        yes: "Delete", danger: true})) return;
       if (await this.bPost({action: "delete_workout", id: this.BLD.wid})) { delete S.my_workouts[this.BLD.wid]; this.BLD.wid = null; toast.show("Deleted"); this.bRender(); }
     });
     box.querySelector("#b-load")?.addEventListener("change", (e) => {
@@ -284,8 +286,11 @@ class WorkoutBuilder {
       const {list, i} = this.bAt(this.BLD.sel); list.splice(i + 1, 0, structuredClone(list[i])); this.BLD.sel = [...this.BLD.sel.slice(0, -1), i + 1]; this.bChanged();
     });
     el.querySelector("#be-del")?.addEventListener("click", () => this.bDelete());
-    el.querySelector("#be-wrap")?.addEventListener("click", () => {
-      const n = Number(prompt("How many times?", "3")); if (!(n >= 1)) return;
+    el.querySelector("#be-wrap")?.addEventListener("click", async () => {
+      const n = Number(await ask.prompt({title: "Repeat this step", label: "How many times?", value: "3", yes: "Repeat",
+        text: "Each time is followed by an easy recovery half as long.",
+        input: {type: "number", min: 1, max: 50, step: 1, required: "", inputmode: "numeric"}}));
+      if (!(n >= 1)) return;
       const {list, i} = this.bAt(this.BLD.sel), s = list[i];
       list[i] = {reps: Math.round(n), steps: [s, {name: "Recover", minutes: Math.max(1, s.minutes / 2), lo: .5, hi: .5, kind: "rest"}]};
       this.BLD.sel = [i]; this.bChanged();

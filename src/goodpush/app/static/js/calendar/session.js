@@ -1,6 +1,7 @@
 // A day's session in the calendar: details, proposals, accept / decline (SessionModal).
 import {api, S, toast} from "../api.js";
 import {esc, fmt, hhmm, mmss} from "../util.js";
+import {ask} from "../controls.js";
 import {adjustRow, niceDate, profileSVG, rideable, rideButton, rideIt, stepsList, today, TYPE_LABEL}
   from "../widgets.js";
 import {router} from "../main.js";
@@ -236,11 +237,12 @@ class SessionModal {
       aria-label="${label}">${p.locked ? "🔒" : "🔓"}</button>`;
   }
 
-  toggleLock(key) {                 // straight from the calendar (no modal): shown at once, then re-planned
+  async toggleLock(key) {           // straight from the calendar (no modal): shown at once, then re-planned
     const p = calendarPage.CAL.planned[key];
     if (!p) return;
     if (p.locked && p.custom) {     // your locked change: off, back to the plan's version
-      if (!confirm("Go back to the plan's version of this day? Your change goes.")) return;
+      if (!await ask.confirm({title: "Back to the plan's version?", yes: "Use the plan's version", danger: true,
+        text: "Your change to this day goes."})) return;
       p.locked = false; p.custom = false;
       calendarPage.calPending(key, "updating");
       api.action({action: "edit_session", key, reset: true}, "Back to the plan's version – updating…")

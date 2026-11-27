@@ -1,5 +1,6 @@
 // Server calls and the state S (Api), the job chip / log / restart watch (JobWatch), Toast.
 import {$, esc} from "./util.js";
+import {ask} from "./controls.js";
 import {router} from "./main.js";
 import {dips} from "./dips.js";
 import {modelPage} from "./pages/model.js";
@@ -30,11 +31,16 @@ class Api {
     if (!r.ok || j.error) { toast.show(j.error || "Something went wrong"); return false; }
     if (j.busy) { toast.show("Busy with another job, try again in a moment"); return false; }
     // a question first (merge two phases? re-plan your own days?): the answer under the key the server names
-    if (j.ask) return this.action({...body, [j.answer || "merge"]: confirm(j.ask)}, msg);
+    if (j.ask) return this.action({...body, [j.answer || "merge"]: await this.answer(j)}, msg);
     if (j.queued) toast.show("Saved – the plan updates as soon as the current job finishes");
     else if (msg) toast.show(msg);
     jobs.pollJob();
     return true;
+  }
+
+  // the server's question (j.ask, with its title and the two answers' labels), in the app's dialog: true for yes
+  answer(j) {
+    return ask.confirm({title: j.title, text: j.ask, yes: j.yes, no: j.no, danger: j.danger});
   }
 
   async query(body) {              // an answer only (nothing saved, no job): its JSON, or null after a toast

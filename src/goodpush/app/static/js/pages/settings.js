@@ -7,7 +7,7 @@ import {router} from "../main.js";
 import {DAYS, SAVE_LABEL, WIDE_KINDS} from "./plan.js";
 import {markers} from "../markers.js";
 import {el} from "../charts.js";
-import {Pref} from "../controls.js";
+import {ask, Pref} from "../controls.js";
 
 // what each goodpush.toml section holds, shown beside its title while it is closed
 const SECTION_NOTE = {
@@ -362,10 +362,11 @@ class SettingsPage extends Page {
       requestAnimationFrame(() => target.scrollIntoView({block: "start"}));
     }
     if (!want) this.jumped = "";
-    $("#physiofresh")?.addEventListener("click", () => {
-      if (!confirm("Fit the model from scratch?\n\nIt starts from the model's priors instead of the last fit (the same as "
-        + "goodpush physio --fresh), then updates the analysis and plan. A stopped sampling run's checkpoint is dropped "
-        + "and the 5–95 % ranges are cleared until the next full run on the Model page.")) return;
+    $("#physiofresh")?.addEventListener("click", async () => {
+      if (!await ask.confirm({title: "Fit the model from scratch?", yes: "Fit from scratch", danger: true,
+        text: "It starts from the model's priors instead of the last fit (the same as goodpush physio --fresh), then "
+          + "updates the analysis and plan.\n\nA stopped sampling run's checkpoint is dropped, and the 5–95 % ranges "
+          + "are cleared until the next full run on the Model page."})) return;
       api.action({action: "physio_fresh"}, "Fitting the model from scratch…");
     });
     const sk = $("#savekey");
@@ -452,12 +453,14 @@ class SettingsPage extends Page {
     document.querySelectorAll("[data-peer-sync]").forEach((b) => b.addEventListener("click", () =>
       api.action({action: "peer_sync", name: b.dataset.peerSync, direction: b.dataset.dir || "both"},
         {send: "Sending…", get: "Getting…", both: "Syncing…"}[b.dataset.dir || "both"])));
-    document.querySelectorAll("[data-peer-rename]").forEach((b) => b.addEventListener("click", () => {
-      const label = prompt(`What do you call ${b.dataset.peerRename} on this computer? (empty = its own name)`, b.dataset.label);
+    document.querySelectorAll("[data-peer-rename]").forEach((b) => b.addEventListener("click", async () => {
+      const label = await ask.prompt({title: `Rename ${b.dataset.peerRename}`, label: "Its name on this computer",
+        text: "Leave it empty to use its own name.", value: b.dataset.label, yes: "Rename"});
       if (label !== null) api.saveOnly({action: "peer_rename", name: b.dataset.peerRename, label: label.trim()}, "Renamed");
     }));
-    document.querySelectorAll("[data-peer-forget]").forEach((b) => b.addEventListener("click", () => {
-      if (confirm(`Stop syncing with ${b.dataset.peerForget}? (Nothing is deleted; pair again to sync again.)`))
+    document.querySelectorAll("[data-peer-forget]").forEach((b) => b.addEventListener("click", async () => {
+      if (await ask.confirm({title: `Stop syncing with ${b.dataset.peerForget}?`, yes: "Stop syncing", danger: true,
+        text: "Nothing is deleted. Pair the computers again to sync again."}))
         api.saveOnly({action: "peer_forget", name: b.dataset.peerForget}, "Done");
     }));
     document.querySelectorAll("[data-peer-home]").forEach((b) => b.addEventListener("click", () =>

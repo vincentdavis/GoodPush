@@ -204,8 +204,8 @@ class Season:
         if same and merge is None:
             weeks = p.weeks + sum(o.weeks for o in same)
             what = " and ".join(f"{o.name} ({o.start} - {o.end.date()})" for o in same)
-            return (f"This is right next to {what}, with the same settings. Merge them into one {weeks}-week phase? "
-                    f"(OK: merge, so the recovery weeks run through it; Cancel: keep them separate)")
+            return (f"This is right next to {what}, with the same settings. Merged into one {weeks}-week phase, "
+                    "its recovery weeks run through all of it; kept apart, each phase has its own.")
         if same and merge:
             p = replace(same[0], start=min(o.start for o in [p, *same]), weeks=p.weeks + sum(o.weeks for o in same))
             others = [o for o in others if o not in same]

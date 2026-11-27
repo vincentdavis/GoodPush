@@ -2,6 +2,7 @@
 import {Page} from "./page.js";
 import {api, S, toast} from "../api.js";
 import {$, addDays, esc, fmt} from "../util.js";
+import {ask} from "../controls.js";
 import {niceDate, TYPE_LABEL} from "../widgets.js";
 import {forms, router} from "../main.js";
 import {HOURS_LIMITED_TIP, PUSH_WEEK_TIP, rampChip} from "../calendar/calendar.js";
@@ -141,10 +142,10 @@ class PlanPage extends Page {
     document.querySelectorAll("tr[data-phase]").forEach((r) => r.addEventListener("click", () => {
       seasonBlocks.want = r.dataset.phase; location.hash = "#calendar";
     }));
-    document.querySelectorAll("#intensityseg button").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("#intensityseg button").forEach((b) => b.addEventListener("click", async () => {
       if (b.classList.contains("on")) return;
-      if (!confirm(`Change how your hard days are chosen to ${b.textContent}?\n\n${STYLE_TEXT[b.dataset.v]}\n\n`
-        + "The plan is re-made from today: your coming hard sessions change.")) return;
+      if (!await ask.confirm({title: "Change how your hard days are chosen?", yes: `Switch to ${b.textContent}`,
+        text: `${STYLE_TEXT[b.dataset.v]}\n\nThe plan is re-made from today, so your coming hard sessions change.`})) return;
       api.action({action: "settings", values: {intensity: b.dataset.v}}, `${b.textContent} – updating the plan…`);
     }));
     document.querySelectorAll("select[data-level]").forEach((sel) => sel.addEventListener("change", () => {
@@ -184,8 +185,9 @@ class PlanPage extends Page {
     });
     $("#acceptphases")?.addEventListener("click", () => api.action({action: "accept_phases"}, "Phases added – re-planning…"));
     $("#dismissphases")?.addEventListener("click", (e) => api.action({action: "dismiss_phases", sig: e.target.dataset.sig}, "Hidden until your races or phases change"));
-    document.querySelectorAll("[data-del-event]").forEach((b) => b.addEventListener("click", () => {
-      if (!confirm(`Delete ${b.dataset.what}? The plan no longer tapers for it.`)) return;
+    document.querySelectorAll("[data-del-event]").forEach((b) => b.addEventListener("click", async () => {
+      if (!await ask.confirm({title: `Delete ${b.dataset.what}?`, text: "The plan no longer tapers for it.", yes: "Delete",
+        danger: true})) return;
       api.action({action: "delete_event", id: b.dataset.delEvent}, "Race deleted – re-planning…");
     }));
   }

@@ -508,6 +508,20 @@ details.edit { margin-top:12px }
 .modal-x { position:absolute; top:10px; right:10px; width:32px; height:32px; border:0; border-radius:50%;
   background:var(--surface2); color:var(--ink2); font-size:20px; line-height:1; cursor:pointer }
 .modal-box .sess-head { margin-top:4px; padding-right:36px }
+/* the app's questions (Ask in js/controls.js): a <dialog> shown modal, in the top layer above any .modal */
+dialog.ask { width:min(440px, calc(100% - 32px)); max-width:none; max-height:calc(100% - 32px); margin:auto; padding:0;
+  overflow-y:auto; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:0 12px 40px rgba(0,0,0,.25) }
+dialog.ask::backdrop { background:color-mix(in srgb, var(--ink, #000) 35%, transparent) }
+dialog.ask[open] { animation:ask-in .14s ease-out }
+@keyframes ask-in { from { opacity:0; transform:translateY(6px) scale(.98) } }
+@media (prefers-reduced-motion:reduce) { dialog.ask[open] { animation:none } }
+.ask-box { padding:18px 18px 16px }
+.ask-box h3 { font-size:16px; margin:0 0 6px }
+.ask-text { color:var(--ink2); font-size:14px; line-height:1.45; overflow-wrap:anywhere }
+.ask-text p { margin:0 0 8px }
+.ask-box label.f { margin-top:6px }
+.ask-btns { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:16px }
 .card.sm { padding:10px 12px; margin-top:12px }
 .card.proposal { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn) inset; margin-bottom:12px }
 .pr-row { display:grid; grid-template-columns:1fr auto; gap:2px 12px; padding:8px 0; border-top:1px solid var(--grid) }
