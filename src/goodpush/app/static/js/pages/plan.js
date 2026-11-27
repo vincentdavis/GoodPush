@@ -133,7 +133,7 @@ class PlanPage extends Page {
       <a class="btn sm" href="/files/plan.ics" download>Download plan.ics</a>
     </div>
   </div>
-  <p class="small muted" style="margin-top:16px">Hours per week, rest / key / long-ride days and FTP override are in <a href="#settings">Settings</a>.</p>
+  <p class="small muted" style="margin-top:16px">Hours per week, rest / key / long-ride days and FTP override are in <a href="#settings/plan">Settings</a>.</p>
 `;
   }
 
