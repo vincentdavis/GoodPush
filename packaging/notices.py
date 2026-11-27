@@ -32,7 +32,9 @@ ALSO = [("Qt (in PySide6 / shiboken6: the ride window and the tray icon)", "PySi
 # front-end libraries copied into the app (app/static/vendor), not pip packages: (what, licence, their files there)
 VENDOR = Path(__file__).resolve().parents[1] / "src" / "goodpush" / "app" / "static" / "vendor"
 VENDORED = [("Apache ECharts 6.1.0 (the app's charts; with code from d3)", "Apache-2.0, d3: BSD-3-Clause",
-             ["echarts.LICENSE", "echarts.NOTICE", "echarts.LICENSE-d3"])]
+             ["echarts.LICENSE", "echarts.NOTICE", "echarts.LICENSE-d3"]),
+            ("Tailwind CSS 4.3.5 and daisyUI 5.8.3 (compiled into the app's stylesheet, app.css; styles/)", "MIT",
+             ["tailwindcss.LICENSE", "daisyui.LICENSE"])]
 
 
 def key(name: str) -> str:

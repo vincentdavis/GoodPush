@@ -16,7 +16,8 @@ This repository is a fork of `GoodPush/GoodPush` (the upstream). Its own rules a
 | `src/goodpush/cli.py` | the `goodpush` command (argparse subcommands: `app`, `sync`, `update`, `plan`, `physio`, `ride`, ...) |
 | `src/goodpush/launcher.py` | `goodpush-app`: starts the server, opens the browser, shows the tray icon (what the installers run) |
 | `src/goodpush/app/server.py` | the app's backend: a stdlib `http.server.ThreadingHTTPServer` with one handler (`make_handler`) serving the JSON API and the static files; background work in `Jobs`, the Garmin auto-sync thread in `serve` |
-| `src/goodpush/app/static/` | the front end: `index.html`, `app.css`, plain ES modules in `js/` (one `Page` subclass per page in `js/pages/`, calendar in `js/calendar/`), charts on ECharts |
+| `src/goodpush/app/static/` | the front end: `index.html`, `app.css` (compiled from `styles/app.css`: never edit it), plain ES modules in `js/` (one `Page` subclass per page in `js/pages/`, calendar in `js/calendar/`), charts on ECharts |
+| `styles/` | the stylesheet's source (Tailwind CSS v4 + daisyUI 5), `build.py`, vendored daisyUI: see "Styles" below |
 | `src/goodpush/app/static/vendor/` | third-party files copied in unchanged (`echarts.esm.min.js` and its licences). Don't edit; pre-commit skips this folder |
 | `src/goodpush/sync/` | downloads from each source: `garmin.py`, `garmin_api.py`, `garmin_browser.js`, `strava.py`, `google_health.py`, `intervals_icu.py`, `incyclist.py`, and `peer.py` (your folder on another machine) |
 | `src/goodpush/io/` | file formats and stores (FIT, streams in HDF5, Strava / Garmin / intervals.icu readers, ZWO) |
@@ -107,6 +108,27 @@ From `CONTRIBUTING.md` and the checks; `tools/hygiene_check.py` enforces some of
 - **Plain language** in the app's text: what it means for the rider, briefly.
 - The PR template is `.github/pull_request_template.md`: fill in what changed, why, and how it was tested.
 
+## Styles: Tailwind CSS + daisyUI
+
+The app's stylesheet is Tailwind CSS v4 with daisyUI 5. Details: `styles/README.md`.
+
+* Edit `styles/app.css`, never `src/goodpush/app/static/app.css` (compiled output, committed so the app, pip
+  installs and `packaging/` need no build step).
+* After changing `styles/app.css`, or adding a Tailwind / daisyUI class to `static/index.html` or `static/js/`, run
+  `uv run python styles/build.py` and commit both files. No Node, no npm: `build.py` downloads Tailwind's standalone CLI.
+* Versions are pinned: Tailwind CLI 4.3.5 in `styles/build.py` (with release SHA-256s), daisyUI 5.8.3 vendored in
+  `styles/vendor/`. Don't upgrade them as a side effect; an upgrade updates the hashes in
+  `tests/test_app_static.py` and the versions in `packaging/notices.py` too.
+* Themes are the daisyUI themes `light` and `dark` (`data-theme` on `<html>`; none follows the system). Colours the
+  app and the charts use (`--ink`, `--muted`, `--s1`...) are defined in those theme blocks, in hex (ECharts reads
+  them and can't parse `oklch`). Keep text colours at WCAG AA (4.5:1) in both themes.
+* Tailwind's preflight is off, and daisyUI's `card`, `loading`, `stack`, `status`, `steps`, `toast`, `tab` and
+  `modal` are excluded because the app uses those class names itself. `.btn` is daisyUI's button.
+* Keep the global `:focus-visible` ring; don't add `outline:none`.
+* Check a style change in light and dark mode at laptop and phone widths (the phone bottom bar has Today, Calendar,
+  Fitness, Plan and More).
+* No GitHub Actions builds: the compiled CSS is built locally and committed.
+
 ## Rules for this fork
 
 - **Don't build on GitHub.** GitHub Actions are turned off on this fork, so ignore `.github/workflows/build.yml`
@@ -121,7 +143,7 @@ From `CONTRIBUTING.md` and the checks; `tools/hygiene_check.py` enforces some of
 
 Done in this order, one PR each, each starting after the previous one is merged:
 
-1. **Tailwind CSS v4 + daisyUI** restyle of the front end (in progress in its own PR).
+1. **Tailwind CSS v4 + daisyUI** restyle of the front end (done: see "Styles").
 2. **FastAPI** replacing the stdlib `http.server` backend in `app/server.py`, keeping the same URLs and JSON.
 3. **APScheduler** replacing the auto-sync loop and `Jobs` in `app/server.py`.
 

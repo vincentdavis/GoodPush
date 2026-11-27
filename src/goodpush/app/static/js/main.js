@@ -21,8 +21,11 @@ import {athleteMenu} from "./athlete_menu.js";
 const PAGES = {today: todayPage, plan: planPage, calendar: calendarPage, fitness: fitnessPage, rider: riderPage, recovery: recoveryPage,
   settings: settingsPage, rides: ridesPage, ride: ridePage, sources: sourcesPage, model: modelPage, help: helpPage};
 const TAB_OF = {rides: "fitness", ride: "fitness", sources: "settings", help: "settings"};
-// colour theme: auto (follows Windows / the phone) -> light -> dark, remembered in this browser
-const THEMES = {auto: ["◐", "Theme: automatic (follows your system)"], light: ["☀", "Theme: light"], dark: ["☾", "Theme: dark"]};
+// colour theme: auto (follows Windows / the phone) -> light -> dark, remembered in this browser; the daisyUI themes
+// "light" and "dark" (styles/app.css), none set follows the system. Icons: [svg paths, label]
+const THEMES = {auto: ['<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/>', "Theme: automatic (follows your system)"],
+  light: ['<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>', "Theme: light"],
+  dark: ['<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>', "Theme: dark"]};
 
 class FormMemory {
   // what you've typed (and which expanders are open) survives a redraw of the same page, e.g. the data
@@ -62,11 +65,29 @@ class ThemeSwitch {
     if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
     this.saved.set(t === "auto" ? null : t);
     const b = $("#themebtn");
-    b.textContent = THEMES[t][0]; b.title = THEMES[t][1]; b.setAttribute("aria-label", THEMES[t][1]);
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${THEMES[t][0]}</svg>`;
+    b.title = THEMES[t][1] + " (click to change)"; b.setAttribute("aria-label", THEMES[t][1]);
     if (S) router.render();                                   // charts take their colours when drawn
   }
 }
 const themes = new ThemeSwitch();
+
+// phones: the bottom bar's More opens the rest of the pages (and the guide) above it
+class MoreMenu {
+  open(on) {
+    $("#morepanel").hidden = !on;
+    $("#morebtn").setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
+  wire() {
+    const btn = $("#morebtn"), panel = $("#morepanel");
+    btn.addEventListener("click", () => this.open(panel.hidden));
+    panel.addEventListener("click", (e) => { if (e.target.closest("a")) this.open(false); });
+    document.addEventListener("click", (e) => { if (!panel.hidden && !e.target.closest("#morepanel, #morebtn")) this.open(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { this.open(false); btn.focus(); } });
+  }
+}
+const moreMenu = new MoreMenu();
 
 // the top bar's Quit (on the computer running goodpush): stops the app, tray icon included. A busy app asks first.
 // The tab stays with a note; started again, goodpush reloads it (JobWatch.stayAlive)
@@ -176,4 +197,5 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#syncbtn").addEventListener("click", () => api.action({action: "peer_sync_all"}, "Syncing…"));
   athleteMenu.wire();
   quitButton.wire();
+  moreMenu.wire();
 });

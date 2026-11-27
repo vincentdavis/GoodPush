@@ -43,3 +43,6 @@ src/goodpush/_version.py
 # virtual environments (uv sync makes .venv)
 .venv/
 .venv-*/
+
+# styles/build.py: the downloaded Tailwind CSS CLI
+styles/.bin/

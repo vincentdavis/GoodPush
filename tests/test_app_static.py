@@ -126,3 +126,19 @@ def test_the_guide_opens_in_the_browser_from_the_header_help_and_model():
     for js in (help_js, model_js):
         assert '${GUIDE}model/overview.html" target="_blank" rel="noopener"' in js
     assert (Path(server.__file__).parents[3] / "docs" / "model" / "overview.html").is_file()
+
+
+def test_the_stylesheet_is_built_from_the_pinned_tailwind_and_daisyui():
+    """app.css is compiled from styles/app.css (python styles/build.py) and committed. daisyUI is vendored in
+    styles/vendor (its 5.8.3 release files, byte for byte); Tailwind's CLI is pinned in styles/build.py. The
+    committed app.css must come from those versions."""
+    import hashlib
+    styles = Path(server.__file__).parents[3] / "styles"
+    released = {"daisyui.mjs": "b1e758e7a719ca213ec51b2ebcc58678dd5b79a845b2853cb8a7426b53680762",  # pragma: allowlist secret
+                "daisyui-theme.mjs": "e3dc6a029c5e98dadb1eb108aa7559dfc6dbe35b0334677093ce044f93e3197c"}  # pragma: allowlist secret
+    for name, sha in released.items():
+        assert hashlib.sha256((styles / "vendor" / name).read_bytes()).hexdigest() == sha, name
+    assert 'VERSION = "4.3.5"' in (styles / "build.py").read_text(encoding="utf-8")
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert css.startswith("/*! tailwindcss v4.3.5 ") and "daisyUI 5.8.3" in css
+    assert (STATIC / "vendor" / "tailwindcss.LICENSE").is_file() and (STATIC / "vendor" / "daisyui.LICENSE").is_file()

@@ -131,7 +131,8 @@ the app can start a Garmin sync when it opens, and some steps rewrite files in t
 * **The app's front end** (`src/goodpush/app/static/js/`): plain ES modules, no build step. Named imports and
   exports only, no `window.` globals, no inline `onclick`. One `Page` subclass per page in `pages/`; shared
   pieces are classes (`TimeWindow`, `Segmented`, `Pref`, `Lazy`) - look for the one that does it before writing
-  a new one.
+  a new one. Styles: `styles/app.css` (Tailwind CSS + daisyUI), compiled into `static/app.css` with
+  `python styles/build.py` (see `styles/README.md`).
 * **Plain language** in the app: say what it means for the rider, briefly.
 
 ### Pull requests
