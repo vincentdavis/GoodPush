@@ -31,39 +31,58 @@ This repository is a fork of `GoodPush/GoodPush` (the upstream). Its own rules a
 
 ## Set up, run, test
 
-```bash
-conda env create -f environment.yml      # Windows: environment-windows.yml. Installs -e .[all,dev]
-conda activate goodpush
-pre-commit install                       # installs the pre-commit and commit-msg hooks
-```
-
-Without conda: Python 3.10+, `python -m venv .venv`, activate it, `pip install -e ".[dev]"`. Extras are in
-`pyproject.toml`: `garmin`, `physio`, `ride`, `sync`, `webview`, `all`, `dev`, `build`, `docs`.
-
-Run the app:
+Use **uv** with **Python 3.14**. `.python-version` pins 3.14 (uv downloads it if missing), `uv.lock` pins every
+dependency, and `uv sync` / `uv run` keep an editable install of the checkout in `.venv` (git-ignored).
 
 ```bash
-goodpush-app                             # server on 127.0.0.1:8765, opens the browser, tray icon
-goodpush app --no-browser                # just the server, same port (--port N, --lan for your phone)
-goodpush --root path/to/copy app         # use a COPY of a workspace: the app can sync and rewrites files
+uv sync --extra dev                      # .venv with goodpush (editable) + all extras + test / commit tools
+uv run pre-commit install                # installs the pre-commit and commit-msg hooks
 ```
+
+- Prefix commands with `uv run` (or `source .venv/bin/activate` first). Don't use `pip install` in `.venv`.
+- Extras are in `pyproject.toml`: `garmin`, `physio`, `ride`, `sync`, `webview`, `all`, `dev`, `build`, `docs`.
+  Add one with `uv sync --extra NAME` (`uv sync` removes extras you don't name: list every one you need).
+- Changing dependencies: edit `pyproject.toml`, run `uv lock`, commit `uv.lock` with it.
+- `requires-python` is `>=3.12` (garminconnect needs 3.12; Intel Macs need conda-forge's builds, which stop
+  short of 3.14: `conda env create -f environment.yml`). Don't raise it to 3.14 without checking Intel Macs.
+
+Run the app (the dev server: the same server the installed app runs, from the checkout):
+
+```bash
+uv run goodpush app --no-browser         # server on 127.0.0.1:8765 (--port N, --lan for your phone)
+uv run goodpush-app                      # as installed: opens the browser, tray icon
+uv run goodpush --root path/to/copy app  # use a COPY of a workspace: the app can sync and rewrites files
+```
+
+The server sends everything with `Cache-Control: no-store` and reads `static/` from the checkout, so a front-end
+change shows on a plain browser reload; Python changes need the server restarted. Styles are compiled (Tailwind +
+daisyUI): run `uv run python styles/build.py --watch` alongside while editing them (see `styles/README.md`).
 
 If 8765 is taken by another goodpush, `goodpush-app` tries the next ports.
 
 Test:
 
 ```bash
-pytest tests -q                          # full suite, about 5 minutes; the physio tests are most of it
-pytest tests/test_app_static.py -q       # run the files you touched while working
-pre-commit run --all-files               # every commit check
+uv run pytest tests -q                   # full suite, about 5 minutes; the physio tests are most of it
+uv run pytest tests/test_app_static.py -q   # run the files you touched while working
+uv run pre-commit run --all-files        # every commit check
 ```
 
 Rebuild the guide after changing `srcdocs/` or the physio model's docstrings, and commit `docs/` with it:
 
 ```bash
-pip install -e ".[docs]"
-python -m sphinx -b html -d build/doctrees srcdocs docs
+uv run --extra docs python -m sphinx -b html -d build/doctrees srcdocs docs
 ```
+
+Build the installed app (PyInstaller; on macOS `dist/goodpush.app`). uv runs the tools; it doesn't make the
+app itself (`uv build` only makes the Python wheel / sdist):
+
+```bash
+uv sync --extra build --extra dev        # PyInstaller + Pillow; name dev too or uv sync drops it
+cd packaging && uv run python make_icon.py && uv run python notices.py && uv run pyinstaller goodpush.spec --noconfirm
+```
+
+Signing and notarizing on the Mac follow (`packaging/sign_mac.sh`, from the `mac-signing` branch until it merges).
 
 ## Conventions
 
