@@ -604,3 +604,27 @@ details.fold[open] > summary { margin-bottom:8px }
 #seasonBand .sb { cursor:grab }
 #seasonBand .sb-rec { cursor:grab }
 #seasonBand .sb-edge { cursor:ew-resize }
+
+/* Settings: groups of collapsible sections; a closed one keeps its title and a one-line status */
+.sethead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap }
+.sethead .sub { flex:1; min-width:240px }
+h2.setgroup { font-size:13px; font-weight:650; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:28px 0 8px }
+details.setsec { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius) }
+details.setsec + details.setsec { margin-top:8px }
+details.setsec > summary { list-style:none; display:flex; align-items:center; flex-wrap:wrap; gap:4px 12px; min-height:52px;
+  padding:12px 44px 12px 16px; position:relative; cursor:pointer; color:var(--ink); border-radius:var(--radius) }
+details.setsec > summary::-webkit-details-marker { display:none }
+details.setsec > summary::after { content:""; position:absolute; right:18px; top:50%; width:8px; height:8px; margin-top:-6px;
+  border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); transition:transform .15s }
+details.setsec[open] > summary::after { transform:rotate(-135deg); margin-top:-2px }
+details.setsec > summary:hover { background:color-mix(in srgb, var(--surface2) 60%, transparent) }
+details.setsec[open] > summary { border-bottom:1px solid var(--grid); border-radius:var(--radius) var(--radius) 0 0 }
+.settitle { font-weight:650; font-size:16px; display:flex; align-items:center; gap:6px }
+.setstat { display:flex; align-items:center; gap:6px; flex-wrap:wrap }
+.setdirty { color:var(--warn); background:var(--warn-bg); border-radius:999px; padding:1px 8px; font-weight:600 }
+.setdirty[hidden] { display:none }
+.setbody > .card { border:0; background:none; border-radius:0 }
+.maint { display:grid; grid-template-columns:max-content 1fr; gap:10px 16px; align-items:center }
+.maint p { margin:0 }
+.maint .btn { width:100% }
+@media (max-width:640px) { .maint { grid-template-columns:1fr; gap:4px } .maint p { margin-bottom:10px } }

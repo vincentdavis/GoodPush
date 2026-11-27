@@ -354,8 +354,11 @@ often they cried wolf. The chosen ones are checked every morning (Clear / Watch 
 <section id="settings">
 <h2>Settings<a class="headerlink" href="#settings" title="Link to this heading">¶</a></h2>
 <p>Your connections (Garmin, Fitbit, Incyclist, your other computers), the plan’s settings, your athlete details,
-FTP, the model, the trainer, and <strong>Rebuild everything</strong> (after importing an export). Everything is saved in
-<code class="docutils literal notranslate"><span class="pre">goodpush.toml</span></code> in your GoodPush folder.</p>
+FTP, the model and the trainer, in sections you open and close (each shows its status while closed; <strong>Expand all</strong>
+opens them all). Under <strong>Data and model</strong>: <strong>Rebuild everything</strong> (after importing an export) and <strong>Fit the model
+from scratch</strong> (<code class="docutils literal notranslate"><span class="pre">goodpush</span> <span class="pre">physio</span> <span class="pre">--fresh</span></code>: from the model’s priors instead of the last fit, after a model update or
+when its numbers look implausible; its 5-95 % ranges come back with the next full run on the Model page). Everything
+is saved in <code class="docutils literal notranslate"><span class="pre">goodpush.toml</span></code> in your GoodPush folder.</p>
 </section>
 <section id="help-feedback">
 <span id="help--feedback"></span><h2>Help &amp; feedback<a class="headerlink" href="#help-feedback" title="Link to this heading">¶</a></h2>
@@ -460,7 +463,7 @@ Python may use the network: allow it on private networks only. The key lives in 
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=0926e583"></script>
+</div><script src="../_static/documentation_options.js?v=f1f0f5f9"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

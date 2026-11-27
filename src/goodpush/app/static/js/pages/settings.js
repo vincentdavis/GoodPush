@@ -7,6 +7,21 @@ import {router} from "../main.js";
 import {DAYS, SAVE_LABEL, WIDE_KINDS} from "./plan.js";
 import {markers} from "../markers.js";
 import {el} from "../charts.js";
+import {Pref} from "../controls.js";
+
+// what each goodpush.toml section holds, shown beside its title while it is closed
+const SECTION_NOTE = {
+  plan: "Hours, rest, key and long-ride days, how hard days are chosen",
+  athlete: "Name, weight, heart rates, birth year",
+  ftp: "Where your FTP comes from",
+  load: "CTL / ATL and TSS without power",
+  physio: "How often the model's ranges are refreshed",
+  events: "Illness, injury, travel",
+  analysis: "Windows for progress and detection",
+  ride: "The trainer overlay",
+  ingest: "Reading ride files",
+  paths: "Where your data lives",
+};
 
 const PEERS_TIP = "Pair your computers once; goodpush keeps rides, health data, plan and settings the same.\n" +
   "• Changes on both survive; the same thing changed on both: home wins\n" +
@@ -15,22 +30,26 @@ const PEERS_TIP = "Pair your computers once; goodpush keeps rides, health data, 
 
 class SettingsPage extends Page {
   html() {
-    const G = S.garmin_api || {}, st = S.settings || {};
+    const G = S.garmin_api || {}, st = S.settings || {}, I = S.intervals_icu || {}, GH = S.google_health || {};
     const last = G.last_sync?.at ? G.last_sync.at.slice(0, 16).replace("T", " ") : null;
     const ls = G.last_sync || {};
     const garmin = G.configured ? `
       <div class="row">${markers.chipFor("done", "Connected")}<span class="small muted">${last ? `last check ${esc(last)}: ${fmt(ls.days)} day(s), ${fmt(ls.activities)} activit${ls.activities === 1 ? "y" : "ies"}${ls.stopped ? " – " + esc(ls.stopped) : ""}` : "no check yet"}</span></div>
       <div class="row" style="margin-top:12px"><button class="btn primary" data-act="garmin_sync">Update now</button></div>`
-      : `<p class="small muted" style="margin:0">Add your Garmin key under <i>API keys</i> above.</p>`;
+      : `<p class="small muted" style="margin:0">Add your Garmin key under ${this.jump("keys", "API keys")}.</p>`;
+    const peers = (S.peers?.computers || []).length, inc = S.incyclist || {};
+    const lastRun = S.generated ? new Date(S.generated).toLocaleString(undefined, {weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"}) : "";
+    const toml = (secs) => secs.map((sec) => this.settingsCard(sec)).join("");
+    this.firstOpen = G.configured ? [] : ["keys"];     // nothing set up yet: start at the keys
     return `
   <h1>Settings</h1>
-  <p class="sub">Saved in <code>goodpush.toml</code> in ${esc(st.root || "your project folder")}; your API keys in your user folder.</p>
+  <div class="sethead">
+    <p class="sub">Saved in <code>goodpush.toml</code> in ${esc(st.root || "your project folder")}; your API keys in your user folder.</p>
+    <button class="btn sm" id="setall" type="button">Expand all</button></div>
 
-  <h2>API keys</h2>
-  ${this.keysCard()}
-
-  <h2>Garmin connection</h2>
-  <div class="card">
+  <h2 class="setgroup">Connections</h2>
+  ${this.section("keys", "API keys", `${this.state(G.configured, "Garmin ✓", "Garmin: not set")} ${this.state(I.configured, "intervals.icu ✓", "intervals.icu: not set")}`, this.keysCard())}
+  ${this.section("garmin", "Garmin connection", G.configured ? (last ? `last check ${esc(last)}` : "Connected") : this.state(false, "", "Not connected"), `<div class="card">
     ${garmin}
     <div class="row" style="margin-top:16px">
       <label class="f" style="max-width:240px">Also check Garmin by itself every (hours, 0 = off: only when you press Update now)
@@ -46,32 +65,53 @@ class SettingsPage extends Page {
       <textarea class="snip" id="snip" hidden readonly></textarea>
       <p class="small muted">Downloads folder: ${esc(st.downloads || "")}</p></details>` : ""}
     ${jobs.jobLog()}
-  </div>
+  </div>`)}
+  ${GH.client || GH.connected ? this.section("fitbit", "Fitbit (Google Health)", this.state(GH.connected, "Connected", "Not connected"), this.googleHealthCard()) : ""}
+  ${this.section("icu", "intervals.icu", I.configured ? (I.last_push?.at ? `last sent ${esc(I.last_push.at.slice(0, 10))}` : "Nothing sent yet") : this.state(false, "", "No key yet"), this.icuCard())}
+  ${this.section("incyclist", "Incyclist", !inc.found ? "Not found on this computer" : inc.sync ? "Writing your plan" : "Off", this.incyclistCard())}
+  ${this.section("peers", `Other computers ${hint(PEERS_TIP)}`, peers ? `${peers} paired` : "None paired", this.peersCard())}
+  ${this.section("phone", "Phone", "Open the app on your phone", `<div class="card small">Start the app with <code>goodpush app --lan</code> and open the link it prints on your phone (same Wi-Fi). Keep that link private – it opens your training and health data.</div>`)}
 
-  ${S.google_health?.client || S.google_health?.connected ? `<h2>Fitbit (Google Health)</h2>${this.googleHealthCard()}` : ""}
+  <h2 class="setgroup">Training and analysis</h2>
+  ${toml(["plan", "athlete", "ftp", "load", "physio", "events", "analysis"])}
 
-  <h2>Incyclist</h2>
-  ${this.incyclistCard()}
-
-  <h2>intervals.icu</h2>
-  ${this.icuCard()}
-
-  <h2>Other computers ${hint(PEERS_TIP)}</h2>
-  ${this.peersCard()}
-
-  ${["plan", "athlete", "ftp", "load", "physio", "events", "ride", "ingest", "analysis", "paths"].map((sec) => this.settingsCard(sec)).join("")}
-
-  <h2>Phone</h2>
-  <div class="card small">Start the app with <code>goodpush app --lan</code> and open the link it prints on your phone (same Wi-Fi). Keep that link private – it opens your training and health data.</div>
-
-  <h2>Data</h2>
-  <div class="card">
-    <div class="row"><button class="btn" data-act="rebuild">Rebuild everything</button>
-      <span class="small muted">re-read every ride file and re-analyse (after importing a Strava or Garmin export)</span></div>
-    <p class="small muted" style="margin:8px 0 0">Last analysis: ${S.generated ? esc(new Date(S.generated).toLocaleString(undefined, {weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"})) : "never"}</p>
-  </div>
-  ${(S.notes || []).length ? `<h2>Data notes</h2><ul class="small muted">${S.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+  <h2 class="setgroup">App and data</h2>
+  ${toml(["ride", "ingest", "paths"])}
+  ${this.section("data", "Data and model", lastRun ? `last analysis ${esc(lastRun)}` : "Not analysed yet", `<div class="card">
+    <div class="maint">
+      <div><button class="btn" data-act="rebuild">Rebuild everything</button></div>
+      <p class="small muted">Re-read every ride file and re-analyse. Use it after importing a Strava or Garmin export.</p>
+      <div><button class="btn" id="physiofresh">Fit the model from scratch</button></div>
+      <p class="small muted">Fit the physiological model again from its starting assumptions instead of the last fit, then
+        update the analysis and plan (the same as <code>goodpush physio --fresh</code>). Use it after a model update or when
+        its numbers look implausible. Takes a few minutes, and the 5–95 % ranges are cleared until the next full run on the
+        <a href="#model">Model</a> page.</p>
+    </div>
+    <p class="small muted" style="margin:12px 0 0">Last analysis: ${lastRun ? esc(lastRun) : "never"}</p>
+    ${(S.notes || []).length ? `<h3 style="margin:14px 0 4px">Data notes</h3><ul class="small muted" style="margin:0">${S.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+  </div>`)}
   <p class="small muted" style="margin-top:16px">GoodPush ${esc(S.about?.version || "")} (beta) · <a href="#help">Help &amp; feedback</a> · where the methods come from: <a href="#sources">Sources</a>.</p>`;
+  }
+
+  // one collapsible section: its title, a one-line status that stays visible when closed, and the card
+  section(id, title, status, body) {
+    const open = SettingsPage.opened.value !== null ? SettingsPage.openSet().has(id) : this.firstOpen.includes(id);
+    return `<details class="setsec" id="set-${id}" data-sec-id="${id}"${open ? " open" : ""}>
+    <summary><span class="settitle">${title}</span><span class="setstat small muted">${status || ""}</span>
+      <span class="setdirty small" hidden>Unsaved changes</span></summary>
+    <div class="setbody">${body}</div></details>`;
+  }
+
+  state(ok, yes, no) { return markers.chipFor(ok ? "done" : "amber", ok ? yes : no); }
+
+  jump(id, text) { return `<a href="#settings/${id}">${esc(text)}</a>`; }
+
+  static opened = new Pref("settings.open", null);    // the sections you left open (comma-separated ids)
+
+  static openSet() { return new Set((SettingsPage.opened.value || "").split(",").filter(Boolean)); }
+
+  rememberOpen() {
+    SettingsPage.opened.set([...document.querySelectorAll("details.setsec[open]")].map((d) => d.dataset.secId).join(","));
   }
 
   peersCard() {
@@ -165,13 +205,13 @@ class SettingsPage extends Page {
     const sent = lp.at ? `Last sent ${esc(lp.at.slice(0, 16).replace("T", " "))}: ${fmt(lp.sent)} workout(s)${lp.deleted ? `, ${fmt(lp.deleted)} removed` : ""}.` : "Nothing sent yet.";
     const body = I.configured ? `
     <div class="row"><button class="btn primary" data-act="icu_push">Send plan now</button><span class="small muted">${esc(sent)}</span></div>`
-      : `<p class="small muted" style="margin:0">Add your intervals.icu key under <i>API keys</i> above.</p>`;
+      : `<p class="small muted" style="margin:0">Add your intervals.icu key under ${this.jump("keys", "API keys")}.</p>`;
     return `<div class="card">
     ${body}
     <p class="small" style="margin:12px 0 0">This is how your workouts get to your watch, bike computer and training apps: goodpush sends the next
       ${fmt(I.days || 14)} days of your plan to your intervals.icu calendar, and intervals.icu passes them on.</p>
     <ol class="small" style="margin:8px 0 0 18px;padding:0;line-height:1.6">
-      <li>Make a free account at <a href="https://intervals.icu" target="_blank" rel="noopener">intervals.icu</a> and add its API key under <i>API keys</i> above.</li>
+      <li>Make a free account at <a href="https://intervals.icu" target="_blank" rel="noopener">intervals.icu</a> and add its API key under ${this.jump("keys", "API keys")}.</li>
       <li>In intervals.icu → <a href="https://intervals.icu/settings" target="_blank" rel="noopener">Settings</a> → <i>Connections</i>, connect your
         Garmin, Wahoo, Zwift or MyWhoosh account and switch on sending planned workouts to it.</li>
       <li>Press <b>Send plan now</b> here, and again after the plan changes.</li></ol>
@@ -251,10 +291,10 @@ class SettingsPage extends Page {
   settingsCard(sec) {
     const spec = S.settings?.schema?.[sec]; if (!spec) return "";
     const vals = S.settings.values?.[sec] || {};
-    return `<h2>${esc(spec.title)}</h2><div class="card">
+    return this.section(sec, esc(spec.title), esc(SECTION_NOTE[sec] || ""), `<div class="card">
     <div class="grid g3">${spec.fields.map((f) => this.settingField(sec, f, vals[f.key])).join("")}</div>
     <div class="row" style="margin-top:14px"><button class="btn primary" data-save="${sec}">${SAVE_LABEL[spec.then]}</button>
-      ${spec.then === "nothing" ? '<span class="small muted">Used from the next import / ride</span>' : ""}</div></div>`;
+      ${spec.then === "nothing" ? '<span class="small muted">Used from the next import / ride</span>' : ""}</div></div>`);
   }
 
   settingField(sec, f, v) {
@@ -298,6 +338,36 @@ class SettingsPage extends Page {
   }
 
   wire() {
+    const secs = [...document.querySelectorAll("details.setsec")];
+    const allBtn = $("#setall");
+    const label = () => { allBtn.textContent = secs.every((d) => d.open) ? "Collapse all" : "Expand all"; };
+    secs.forEach((d) => d.addEventListener("toggle", () => { this.rememberOpen(); label(); }));
+    allBtn.addEventListener("click", () => {
+      const open = !secs.every((d) => d.open);
+      secs.forEach((d) => { d.open = open; });
+    });
+    label();
+    // an edit not saved yet shows on the section's title, so closing it doesn't hide it
+    secs.forEach((d) => {
+      const mark = () => { d.querySelector(".setdirty").hidden = false; };
+      d.querySelector(".setbody").addEventListener("input", mark);
+      d.querySelectorAll(".days button").forEach((b) => b.addEventListener("click", mark));
+    });
+    // #settings/<section>: open that section and scroll to it (links from Today, Plan and this page)
+    const want = router.routeArg();
+    const target = want && $(`#set-${CSS.escape(want)}`);
+    if (target && this.jumped !== location.hash) {
+      this.jumped = location.hash;
+      target.open = true;
+      requestAnimationFrame(() => target.scrollIntoView({block: "start"}));
+    }
+    if (!want) this.jumped = "";
+    $("#physiofresh")?.addEventListener("click", () => {
+      if (!confirm("Fit the model from scratch?\n\nIt starts from the model's priors instead of the last fit (the same as "
+        + "goodpush physio --fresh), then updates the analysis and plan. A stopped sampling run's checkpoint is dropped "
+        + "and the 5–95 % ranges are cleared until the next full run on the Model page.")) return;
+      api.action({action: "physio_fresh"}, "Fitting the model from scratch…");
+    });
     const sk = $("#savekey");
     if (sk) sk.addEventListener("click", async () => {
       const k = $("#gkey").value.trim();
