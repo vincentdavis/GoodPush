@@ -109,3 +109,20 @@ def test_curve_history_centres_the_measured_window_on_the_week():
     hit = np.flatnonzero(row == 400)
     week = out["date"].index("2025-03-09")                             # the effort's column (its Sunday)
     assert week in hit and hit.min() == week - 3 and hit.max() == week + 3   # 3 weeks each side, centred
+
+
+def test_app_physio_carries_the_20_min_power_the_rider_page_predicts(tmp_path):
+    """server._physio: p20 per day, the same fresh 20-min power as PowerHistory's predicted (Today's Your numbers)."""
+    from goodpush.app import server
+    from goodpush.models.power_history import PowerHistory
+    states, acts, fit, fc = power_history_case()
+    states = states.assign(lt1=200.0, ftp=245.0)
+    states["cp"] = np.linspace(240.0, 260.0, len(states))           # moving, so each day's p20 is its own
+    states.to_parquet(tmp_path / "physio_states.parquet")
+    out = server._physio(tmp_path)
+    pred = PowerHistory(states, acts, fit, fc).build()
+    j = pred["s"].index(1200)
+    assert len(out["p20"]) == len(out["date"]) == len(states)
+    assert np.allclose(out["p20"], np.array(pred["predicted"][j][:len(states)], float), atol=0.06)
+    states.drop(columns=["pmax"]).to_parquet(tmp_path / "physio_states.parquet")
+    assert "p20" not in server._physio(tmp_path)                    # an older states file: no 20 min, no error

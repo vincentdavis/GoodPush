@@ -5,13 +5,19 @@ import {Segmented} from "../controls.js";
 import {Page} from "./page.js";
 import {api, S} from "../api.js";
 import {$, addDays, esc, fmt, hhmm} from "../util.js";
-import {delta, ICON, morningsStrip, niceDate, profileSVG, rideIt, markButtons, sessionOn, sessions, signsRow,
+import {delta, hint, ICON, morningsStrip, niceDate, profileSVG, rideIt, markButtons, sessionOn, sessions, signsRow,
   STATUS_LABEL, stepsList, TYPE_LABEL, today} from "../widgets.js";
 import {router} from "../main.js";
 import {markers} from "../markers.js";
 import {syncIcon, morningLabel, wellnessAge} from "../status_bar.js";
+import {Trend} from "../trend.js";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// Your numbers (as on the Rider page), from the physio model's daily states: key, name, unit, divisor, digits
+const NUMBERS = [["lt1", "LT1", "W", 1, 0], ["cp", "CP", "W", 1, 0], ["map", "MAP (5 min)", "W", 1, 0],
+  ["p20", "20 min", "W", 1, 0], ["w_prime", "W′", "kJ", 1000, 1]];
+const SPANS = [7, 14, 30];       // the changes shown, in days
+const NUMBERS_TIP = "Your fitness from the physiology model, fresh, and how it moved over the last 7, 14 and 30 days.\n• LT1: the top of easy riding\n• CP: the most you can hold without tiring quickly; FTP is about 1 hour\n• MAP: about your best 5 minutes\n• 20 min: the most you could hold for 20 minutes, fresh and all-out\n• W′: the work you can do above CP, like a battery\n• Small changes are within the model's noise: look at the 30 days\n• More: the Rider page";
 const NO_VERDICT = '<svg viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/></svg>';
 
 class TodayPage extends Page {
@@ -161,6 +167,27 @@ class TodayPage extends Page {
     </div></div>`;
   }
 
+  // the physio model's LT1, CP · FTP, MAP, 20 min and W′ on day d, each with its change over SPANS (not ahead of
+  // the model's last day: those are the plan's forecast)
+  numbers(d) {
+    const T = new Trend(S.physio);
+    if (!S.physio || T.index(d) < 0) return "";
+    const cells = NUMBERS.map(([k, name, unit, div, nd]) => {
+      const v = T.value(k, d);
+      if (v == null) return "";
+      const ftp = k === "cp" && T.value("ftp", d) != null ? `FTP ${fmt(T.value("ftp", d))} W` : "&nbsp;";
+      const chg = SPANS.map((n) => {
+        const c = T.change(k, d, n), [w, cls] = Trend.words(c == null ? null : c / div, nd);
+        return `<dt>${n} d</dt><dd class="${cls}">${w}</dd>`;
+      }).join("");
+      return `<div class="cell"><div class="k">${k === "cp" ? "CP · FTP" : name}</div><div class="v">${fmt(v / div, nd)}<small> ${unit}</small></div>
+        <div class="s">${ftp}</div><dl class="chg" aria-label="${name}: change over ${SPANS.join(", ")} days">${chg}</dl></div>`;
+    }).join("");
+    if (!cells) return "";
+    return `<div id="todaynumbers"><h2 class="striptitle">${d === today() ? "Your numbers" : "Your numbers that day"}${hint(NUMBERS_TIP)}
+      <a class="more" href="#rider">More →</a></h2><div class="strip nums">${cells}</div></div>`;
+  }
+
   html() {
     const td = today();
     if (!td) return `<h1>${S.name ? `Hi ${esc(S.name)}` : "Today"}</h1>${this.nudge(td)}<div class="card muted">No data yet. Connect Garmin
@@ -169,7 +196,8 @@ class TodayPage extends Page {
     return `${this.header(d)}
       ${this.nudge(d)}
       <div class="daycard">${this.verdict(d)}${this.session(d)}</div>
-      ${this.strip(d)}`;
+      ${this.strip(d)}
+      ${this.numbers(d)}`;
   }
 
   wire() {

@@ -727,10 +727,20 @@ details.dayfold > summary { cursor:pointer; color:var(--accent); font-weight:600
 .strip .v small { font-size:12.5px; font-weight:500; color:var(--ink2) }
 .strip .s { font-size:12px; color:var(--muted) }
 .strip .s.up, .strip .s .up { color:var(--good) } .strip .s.down, .strip .s .down { color:var(--bad) } .strip .s.mid { color:var(--warn) }
+/* Today's Your numbers: five cells, each with its 7 / 14 / 30-day changes */
+#todaynumbers .striptitle { display:flex; align-items:center; gap:6px }
+#todaynumbers .more { margin-left:auto; font-size:12.5px; font-weight:500; letter-spacing:0; text-transform:none }
+.strip.nums { grid-template-columns:repeat(5, minmax(0,1fr)) }
+.strip .chg { display:grid; grid-template-columns:repeat(3, auto); justify-content:start; column-gap:12px; margin:6px 0 0; font-variant-numeric:tabular-nums }
+.strip .chg dt { grid-row:1; font-size:11px; color:var(--muted); white-space:nowrap }
+.strip .chg dd { grid-row:2; margin:0; font-size:13px; font-weight:600; color:var(--ink2) }
+.strip .chg dd.up { color:var(--good) } .strip .chg dd.down { color:var(--bad) }
 @media (max-width:900px) {
   .daycard { grid-template-columns:1fr }
   .verdict { border-right:0; border-bottom:1px solid var(--line) }
-  .strip { grid-template-columns:repeat(3, minmax(0,1fr)) }
+  .strip, .strip.nums { grid-template-columns:repeat(3, minmax(0,1fr)) }
+  .strip .chg { column-gap:8px }
+  .strip.nums .cell { padding:10px 10px }
   .strip .cell:nth-child(4) { border-left:0 }
   .strip .cell:nth-child(n+4) { border-top:1px solid var(--line) }
 }

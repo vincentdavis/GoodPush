@@ -1028,7 +1028,11 @@ def _physio(processed) -> dict | None:
     from ..models.physio import PhysioDiagnostics
     cols = [c for c in ("cp", "lt1", "map", "ftp", "w_prime", "fatigue", "form") for c in (c, c + "_p05", c + "_p95") if c in st]
     out = {"date": [str(i.date()) for i in st.index], **{c: [_num(v, 1) for v in st[c].to_numpy()] for c in cols}}
-    diag = _read_json(processed / PhysioDiagnostics.FILE, {}) or {}
+    if {"cp", "w_prime", "pmax", "fade"} <= set(st):      # 20-min power, fresh (as the Rider page's power over time)
+        from ..physio import PowerCurve
+        p20 = np.asarray(PowerCurve.power(1200.0, *(st[c].to_numpy(float) for c in ("cp", "w_prime", "pmax", "fade"))))
+        out["p20"] = [_num(v, 1) for v in p20]
+    diag =_read_json(processed / PhysioDiagnostics.FILE, {}) or {}
     out["assumed"] = diag.get("assumed") or []                          # said by the numbers
     out["draws_day"] = diag.get("draws_day") or diag.get("full_date") or None   # the ranges' run (pages: when older)
     from ..physio import CHAINS
