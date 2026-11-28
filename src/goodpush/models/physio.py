@@ -1110,23 +1110,62 @@ class PhysioDiagnostics:
                       "change_pct": round(100 * float(df.std()), 2), "training_change_pct": round(100 * float(dt.std()), 2)}
         return out
 
+    def inputs(self) -> dict:
+        """what the fit was given: its days (from the first, which [physio] since_days can move), the days with
+        riding and their hours, and how many best powers and threshold readings"""
+        d = self.model.data
+        ridden = np.asarray(d.hist_h).sum(axis=1)
+        return {"first_day": str(d.days[0]), "days": int(len(d.days)), "ride_days": int((ridden > 0).sum()),
+                "hours": round(float(ridden.sum()), 1), "efforts": int(len(d.effort_w)),
+                "readings": int(len(d.reading_w))}
+
+    def best(self) -> dict:
+        """today's thresholds from the best fit (W; W' in kJ): what `previous` compares the next fit with"""
+        path = self.model.trajectory(self.z)
+        return {c: round(float(np.asarray(path[c])[-1]) / (1000.0 if c == "w_prime" else 1.0), 1)
+                for c in self.TODAY if c in path}
+
+    @staticmethod
+    def set_aside(acts, first_day: str) -> dict:
+        """rides from `first_day` on whose power the power check set aside (metrics.power_check: activities'
+        `power_ignored`), by reason: {"marked": n, "heart rate": n}, zeros where none"""
+        out = {"marked": 0, "heart rate": 0}
+        if acts is None or "power_ignored" not in acts or not first_day:
+            return out
+        why = acts.loc[pd.to_datetime(acts["date"]) >= pd.Timestamp(first_day), "power_ignored"].fillna("")
+        return {k: int((why == k).sum()) for k in out}
+
+    @staticmethod
+    def previous(old: dict, day: str, version: int) -> dict | None:
+        """the best fit's numbers before the newest data day (`old`: the file this save replaces), so the app can say
+        what the latest rides moved. Kept through refits of the same day; None across model versions."""
+        if old.get("version") != version or not old.get("best"):
+            return None
+        if old.get("day") != day:
+            return {"day": old.get("day"), "best": old["best"]}
+        return old.get("previous")
+
     def save(self, processed, sampling: dict | None, draws_day: str = "") -> None:
         """`draws_day`: the data day of the run that made the draws ("" without draws): ranges older than the data
         say so in the app."""
         import json
+        from ..physio.model import VERSION
         f = processed / self.FILE
+        try:
+            old = json.loads(f.read_text(encoding="utf-8")) or {}
+        except (OSError, ValueError):
+            old = {}
         if sampling is None:                       # a daily update: the run that made the draws stays shown
-            try:
-                sampling = json.loads(f.read_text(encoding="utf-8")).get("sampling")
-            except (OSError, ValueError):
-                sampling = None
+            sampling = old.get("sampling")
             if sampling is not None and self.T is None:
                 sampling = None                    # its draws are gone (another model layout)
-        from ..physio.model import VERSION
-        out = {"day": str(self.model.data.days[-1]), "draws_day": draws_day, "sampling": sampling, "version": VERSION,
+        day = str(self.model.data.days[-1])
+        out = {"day": day, "draws_day": draws_day, "sampling": sampling, "version": VERSION,
                "posterior": self.posterior(), "efforts": self.efforts(), "readings": self.readings(),
-               "training": self.training(), "assumed": self.assumed()}
-        f.write_text(json.dumps(out, ensure_ascii=True), encoding="utf-8")
+               "training": self.training(), "assumed": self.assumed(), "inputs": self.inputs(), "best": self.best(),
+               "previous": self.previous(old, day, VERSION)}
+        body = json.dumps(out, ensure_ascii=True).encode("utf-8")
+        PhysioRun.write_whole(f, lambda g: g.write(body))
 
 
 class TrainingResponse:

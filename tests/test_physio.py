@@ -1752,3 +1752,34 @@ def test_compiled_code_kept_apart_by_compression(tmp_path, monkeypatch):
     assert set_to["jax_compilation_cache_dir"] == str(tmp_path / PhysioRun.cache_codec())
     assert sorted(p.name for p in tmp_path.iterdir()) == ["zlib"]
     assert (tmp_path / "zlib" / "jit_g-def-cache").exists()
+
+
+def test_model_page_says_what_the_fit_used_and_what_the_latest_rides_moved(tmp_path):
+    """2026-11-28 Model page: the diagnostics name what the fit was given, today's best-fit numbers, and the best fit
+    before the newest data day (kept through refits of the same day, dropped across model versions); the power check's
+    set-aside rides are counted from the fit's first day."""
+    import pandas as pd
+    from types import SimpleNamespace
+    from goodpush.models.physio import PhysioDiagnostics, PhysioRun
+    from goodpush.physio.model import VERSION
+    m = PhysioModel(synthetic(n_days=84))
+    z = PhysioFit(m).map(maxiter=50).z
+    run = PhysioRun(SimpleNamespace(processed=tmp_path, reports=tmp_path, cfg={}))
+    run.save(m, m.data, z, np.zeros((0, m.spec.size)), "", None, progress=lambda s: None)
+    f = tmp_path / PhysioDiagnostics.FILE
+    d = json.loads(f.read_text(encoding="utf-8"))
+    I = d["inputs"]
+    assert I["first_day"] == str(m.data.days[0]) and I["days"] == len(m.data.days) == 84
+    assert I["efforts"] == len(m.data.effort_w) and I["readings"] == len(m.data.reading_w)
+    assert 0 < I["ride_days"] <= 84 and I["hours"] > 0
+    assert d["best"]["cp"] == pytest.approx(float(m.trajectory(z)["cp"][-1]), abs=0.05)
+    assert 5 < d["best"]["w_prime"] < 60 and d["previous"] is None   # kJ; nothing before the first fit
+    old = {**d, "day": "2000-01-01", "best": {"cp": 1.0}}
+    assert PhysioDiagnostics.previous(old, d["day"], VERSION) == {"day": "2000-01-01", "best": {"cp": 1.0}}
+    same = {**d, "previous": {"day": "2000-01-01", "best": {"cp": 1.0}}}
+    assert PhysioDiagnostics.previous(same, d["day"], VERSION) == same["previous"]   # a refit of the same day
+    assert PhysioDiagnostics.previous(old, d["day"], VERSION + 1) is None            # another model
+    acts = pd.DataFrame({"date": pd.to_datetime(["2026-01-01", "2026-03-01", "2026-03-02", "2026-03-03"]),
+                         "power_ignored": ["marked", "marked", "heart rate", ""]})
+    assert PhysioDiagnostics.set_aside(acts, "2026-02-01") == {"marked": 1, "heart rate": 1}
+    assert PhysioDiagnostics.set_aside(None, "2026-02-01") == {"marked": 0, "heart rate": 0}

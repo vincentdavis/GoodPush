@@ -325,6 +325,20 @@ def test_the_model_page_shows_todays_best_fit_before_any_ranges():
     assert '<div class="card">${hint(' not in riding
 
 
+def test_the_model_page_says_where_you_are_heading_and_what_the_fit_used():
+    """2026-11-28 Model page ideas: today's numbers with their 6-week change and what the latest rides moved (a big
+    move flagged), what the fit was given (days, rides, best powers, readings, rides set aside), the predicted vs
+    observed chart in one sentence, and how fresh the LT1 / CP readings are, with a ramp test named when they're old."""
+    model = (JS / "pages" / "model.js").read_text(encoding="utf-8")
+    assert model.count("this.trendCell(k)") == 2 and model.count("${this.movedLine()}") == 2
+    assert "const TREND_DAYS = 42;" in model and "const MOVED_BIG = 0.03;" in model and "const FRESH_DAYS = 42;" in model
+    assert "${this.inputsCard()}" in model and "I.set_aside" in model
+    assert 'id="mdEffortSay"' in model and '$("#mdEffortSay").textContent = this.effortSay(pick);' in model
+    assert "${this.readingsFresh()}" in model and "a ramp test would add a fresh one" in model
+    server = (Path(__file__).parents[1] / "src" / "goodpush" / "app" / "server.py").read_text(encoding="utf-8")
+    assert "PhysioDiagnostics.set_aside(" in server
+
+
 def test_the_intensity_colours_keep_their_order_in_both_themes():
     """--z1 (easy) is the yellow end and --z7 (hard) the blue end in light and dark alike (the dark theme reversed
     the scale before 2026-11-27); text on a zone colour (--on-z*) stays readable on it."""

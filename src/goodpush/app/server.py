@@ -2298,6 +2298,9 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                         out["backtest"]["date"] = full_run.file_day(report.folder / f"{PhysioCalibrated.name}.json")
                     if "coverage" in out:
                         out["coverage"]["date"] = full_run.file_day(report.folder / PosteriorCoverage.FILE)
+                    if out.get("inputs"):                # rides whose power the power check set aside, in the fit's days
+                        out["inputs"]["set_aside"] = PhysioDiagnostics.set_aside(data._tables()[1],
+                                                                                 out["inputs"]["first_day"])
                     out["run"] = full_run.status()
                     return self._json(out)
                 if u.path == "/api/model_run":          # the Model page's full run, while it goes (FullModelRun)

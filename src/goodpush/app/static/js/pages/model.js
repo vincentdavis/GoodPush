@@ -23,6 +23,9 @@ const READ_NAME = {my_ftp: "FTP you entered", alpha1_lt1: "alpha1 on rides (LT1)
   ramp_lt2: "Ramp test, alpha1 (LT2)", ramp_hr_lt1: "Ramp test, heart rate (LT1)", ramp_hr_lt2: "Ramp test, heart rate (LT2)"};
 const readName = (n) => READ_NAME[n] || n.replace(/_/g, " ");
 const RUN_POLL_MS = 5000;
+const TREND_DAYS = 42;        // today's numbers: their change over 6 weeks
+const MOVED_BIG = 0.03;       // the latest rides moved a number more than this share: worth a look
+const FRESH_DAYS = 42;        // a threshold reading older than this: a test would add a fresh one
 const STATUS_TIP = "Where the model stands.\n"
   + "• Version: of the stored fit, the code this app runs, the code on disk (all alike = fine)\n"
   + "• Fitted to: the best fit, re-made after every ride\n"
@@ -245,14 +248,14 @@ class ModelPage extends Page {
       const q = P[k], d = ["w_prime", "fade"].includes(k) ? 1 : 0;
       const a = Math.min(q.p05, q.p50 * 0.85), b = Math.max(q.p95, q.p50 * 1.15), at = (v) => (100 * (v - a) / (b - a)).toFixed(1);
       return `<tr><td>${esc(name)}${assumed[k] ? ` <span class="chip">assumed</span>${hint(assumed[k].why)}` : ""}</td><td class="n">${fmt(q.p50, d)} ${unit}</td>
-        <td class="n">${fmt(q.p05, d)}–${fmt(q.p95, d)} ${unit}</td>
+        <td class="n">${fmt(q.p05, d)}–${fmt(q.p95, d)} ${unit}</td>${this.trendCell(k)}
         <td style="min-width:120px"><div class="rbar"><i style="left:${at(q.p05)}%;width:${(at(q.p95) - at(q.p05)).toFixed(1)}%;background:var(${MODEL_Q[k][2]})"></i><b style="left:${at(q.p50)}%"></b></div></td></tr>`;
     }).join("");
     const other = A.filter((x) => !MODEL_Q[x.name]), ck = this.samplerChecks();
     const rough = ck && !ck[0] ? `<p class="small" style="margin:0 0 8px;color:var(--warn)">Rough: the sampling run behind these ranges didn't pass its checks (see Sampler details).</p>` : "";
     if (!rows) return this.bestFitSection();
-    return `<h2>Today, with its uncertainty${hint("Where the model puts you today: median and 5-95 % range over its draws.\n• Bar: the range around the median (track ±15 %, wider if needed)\n• Narrow: the data pin it down · wide: anywhere in there")}</h2>
-  <div class="card">${rough}<div class="tw"><table><thead><tr><th>Today</th><th class="n">Median</th><th class="n">5–95 %</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    return `<h2>Today, with its uncertainty${hint("Where the model puts you today: median and 5-95 % range over its draws.\n• Weeks: the best fit's change over that time\n• Bar: the range around the median (track ±15 %, wider if needed)\n• Narrow: the data pin it down · wide: anywhere in there")}</h2>
+  <div class="card">${rough}<div class="tw"><table><thead><tr><th>Today</th><th class="n">Median</th><th class="n">5–95 %</th><th class="n">${TREND_DAYS / 7} weeks</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${this.movedLine()}
     ${other.length ? `<p class="small muted" style="margin:8px 0 0">Assumed, not learned: ${other.map((x) => `<b>${esc(x.what)}</b> (${esc(x.short)})${hint(x.why)}`).join(" · ")}</p>` : ""}</div>`;
   }
 
@@ -262,9 +265,61 @@ class ModelPage extends Page {
     const P = S.physio, i = P?.date ? P.date.length - 1 : -1;
     const rows = Object.entries(MODEL_Q).filter(([k]) => i >= 0 && P[k] && P[k][i] != null).map(([k, [name, unit]]) =>
       `<tr><td>${esc(name)}</td><td class="n" data-label="Best fit">${k === "w_prime" ? fmt(P[k][i] / 1000, 1) : fmt(P[k][i])} ${unit}</td>
-        <td class="muted small" data-label="5–95 %">after a sampling run</td></tr>`).join("");
-    return rows ? `<h2>Today, from the best fit${hint("Where the model puts you today, from its single best fit.\n• No range yet: a sampling run adds how sure it is of each number\n• The same numbers as the Rider page")}</h2>
-  <div class="card"><div class="tw"><table class="stacktable kv"><thead><tr><th>Today</th><th class="n">Best fit</th><th>5–95 %</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : "";
+        <td class="muted small" data-label="5–95 %">after a sampling run</td>${this.trendCell(k)}</tr>`).join("");
+    return rows ? `<h2>Today, from the best fit${hint("Where the model puts you today, from its single best fit.\n• No range yet: a sampling run adds how sure it is of each number\n• Weeks: the change over that time (the model's line, not one test)\n• The same numbers as the Rider page")}</h2>
+  <div class="card"><div class="tw"><table class="stacktable kv"><thead><tr><th>Today</th><th class="n">Best fit</th><th>5–95 %</th><th class="n">${TREND_DAYS / 7} weeks</th></tr></thead><tbody>${rows}</tbody></table></div>${this.movedLine()}</div>` : "";
+  }
+
+  // the best fit's change over the last TREND_DAYS (S.physio's daily line), "" where it has no line for k
+  trendCell(k) {
+    const P = S.physio, v = P?.[k], i = v ? v.length - 1 : -1;
+    if (i < TREND_DAYS || v[i] == null || v[i - TREND_DAYS] == null) return `<td class="n muted" data-label="${TREND_DAYS / 7} weeks"></td>`;
+    const kj = k === "w_prime", d = (v[i] - v[i - TREND_DAYS]) / (kj ? 1000 : 1), unit = MODEL_Q[k][1];
+    const say = Math.abs(d) < (kj ? 0.05 : 0.5) ? `±0 ${unit}` : `${d > 0 ? "+" : "−"}${fmt(Math.abs(d), kj ? 1 : 0)} ${unit}`;
+    return `<td class="n" data-label="${TREND_DAYS / 7} weeks">${say}</td>`;
+  }
+
+  // what the latest rides moved: today's best fit against the one before the newest data day (PhysioDiagnostics.previous)
+  movedLine() {
+    const B = this.model.data.best, prev = this.model.data.previous;
+    if (!B || !prev?.best) return "";
+    const ks = Object.keys(MODEL_Q).filter((k) => B[k] != null && prev.best[k] != null && k !== "pmax");
+    if (!ks.length) return "";
+    const big = ks.filter((k) => Math.abs(B[k] / prev.best[k] - 1) > MOVED_BIG);
+    const one = (k) => { const d = B[k] - prev.best[k], kj = k === "w_prime";
+      return `${esc(MODEL_Q[k][0].split(" (")[0])} ${Math.abs(d) < (kj ? 0.05 : 0.5) ? "±0" : (d > 0 ? "+" : "−") + fmt(Math.abs(d), kj ? 1 : 0)} ${MODEL_Q[k][1]}`; };
+    return `<p class="small muted" style="margin:8px 0 0">Since the fit of ${esc(niceDate(prev.day, {day: "numeric", month: "short"}))}, the latest rides moved: ${ks.map(one).join(" · ")}${hint("Today's best fit against the one before your newest rides.\n• A few watts: normal, each ride adds a little\n• More than " + MOVED_BIG * 100 + " % from a ride or two: worth checking that ride's power")}</p>`
+      + (big.length ? `<p class="small" style="margin:4px 0 0;color:var(--warn)">${big.map((k) => esc(MODEL_Q[k][0].split(" (")[0])).join(" and ")} moved more than ${MOVED_BIG * 100} % on the latest rides: worth a look at their power (a wrong reading can be marked on the Ride page).</p>` : "");
+  }
+
+  // what the fit was given (PhysioDiagnostics.inputs; set_aside by the server from metrics.power_check)
+  inputsCard() {
+    const I = this.model.data.inputs;
+    if (!I) return "";
+    const A = I.set_aside || {}, aside = (A.marked || 0) + (A["heart rate"] || 0);
+    const asideSay = aside ? `Power set aside on ${[A.marked ? `${A.marked} ride${A.marked > 1 ? "s" : ""} you marked` : "", A["heart rate"] ? `${A["heart rate"]} ride${A["heart rate"] > 1 ? "s" : ""} where heart rate didn't match it` : ""].filter(Boolean).join(" and ")}.`
+      : "No ride's power was set aside.";
+    return `<div class="card" style="margin-top:12px"><div class="row"><b>What the fit used</b>${hint("What the model was fitted to.\n• Best powers: each ride's best at several durations\n• Threshold readings: alpha1, ramp tests, an FTP you entered\n• Set aside: power the power check found wrong (yours to mark on the Ride page, or Settings > Importing); those rides still count for time and heart rate")}</div>
+    <p class="small" style="margin:6px 0 0">${fmt(I.days)} days from ${esc(niceDate(I.first_day, {day: "numeric", month: "short", year: "numeric"}))} (${fmt(I.ride_days)} with riding, ${fmt(I.hours)} h): ${fmt(I.efforts)} best powers and ${fmt(I.readings)} threshold readings. ${asideSay}</p></div>`;
+  }
+
+  // how fresh each threshold's readings are, and what would add one (the readings of the last two years)
+  readingsFresh() {
+    const R = this.model.data.readings, day = this.model.data.day;
+    if (!R || !day) return "";
+    const of = Object.fromEntries(R.sources.map((s) => [s.name, s.quantity])), ms = (v) => new Date(v + "T12:00:00").getTime();
+    const ago = (n) => n < 14 ? `${n} day${n === 1 ? "" : "s"} ago` : n < 70 ? `${Math.round(n / 7)} weeks ago` : `${Math.round(n / 30.4)} months ago`;
+    const last = this.readQuantities().filter((q) => q === "lt1" || q === "cp").map((q) => {
+      const ix = R.source.map((n, i) => of[n] === q ? i : -1).filter((i) => i >= 0);
+      if (!ix.length) return [q, null];
+      const i = ix.reduce((a, b) => (R.date[b] > R.date[a] ? b : a));
+      return [q, Math.round((ms(day) - ms(R.date[i])) / 864e5), R.source[i], R.date[i]];
+    });
+    if (!last.length) return "";
+    const stale = last.filter(([, n]) => n == null || n > FRESH_DAYS).map(([q]) => READ_LINE[q][0]);
+    return `<p class="small muted" style="margin:10px 0 0">Latest: ${last.map(([q, n, src, d]) => n == null ? `${READ_LINE[q][0]} none in two years`
+      : `${READ_LINE[q][0]} ${esc(niceDate(d, {day: "numeric", month: "short"}))} (${ago(n)}, ${esc(readName(src))})`).join(" · ")}</p>`
+      + (stale.length ? `<p class="small" style="margin:4px 0 0">No ${stale.join(" or ")} reading in the last ${FRESH_DAYS / 7} weeks: a ramp test would add a fresh one, and pins the model's ${stale.join(" and ")} more than rides do.</p>` : "");
   }
 
   fatigueAssumed() {    // the fit couldn't learn what fatigue costs on the day (models.physio.PhysioDiagnostics.assumed)
@@ -340,18 +395,19 @@ class ModelPage extends Page {
   <p class="mdgroup">How far to trust it</p>
   <h2>Status${hint(STATUS_TIP)}</h2>
   ${this.runCard.statusHtml(this.model.data, this.verdictSection())}
+  ${this.inputsCard()}
   ${this.samplerSection()}
   <h2>Predicted vs observed${hint("The model's all-out power on the day (fatigue included) against each ride's best, last year.\n• All-out efforts: on the line · most rides: below it\n• Well above the line: efforts the model didn't think you could do\n• Easy rides hidden unless you show them")}</h2>
   <div class="card"><div class="row"><div class="legend" id="mdKindLegend">${this.kindLegend()}</div>
     <span class="spacer"></span><div class="seg"><button id="mdEasy" class="${this.showEasy.value ? "on" : ""}" title="Show easy rides' best powers too">Easy rides</button></div>
     <div class="seg" id="mdDur">${[60, 300, 1200].map((d) => `<button data-s="${d}" class="${d === this.modelDur ? "on" : ""}">${d / 60} min</button>`).join("")}<button data-s="0" class="${this.modelDur === 0 ? "on" : ""}">All</button></div></div>
-    <div id="mdEffort" class="chart"></div></div>
+    <div id="mdEffort" class="chart"></div><p id="mdEffortSay" class="small muted" style="margin:6px 0 0"></p></div>
   ${used.length ? `<h2>Threshold readings${hint("Each reading (alpha1, ramp tests, heart-rate estimates, FTP you entered) next to the model's line for what it measures.\n• Each kind has its own learned offset (bias) and spread\n• Bias removed: each reading divided by its kind's offset, so it can be compared with the line\n• As read: the raw numbers\n• Ramp-test readings are caps: the threshold can sit below, not above")}</h2>
   <div class="card"><div class="row"><div class="legend" id="mdReadLegend"></div><span class="spacer"></span>
     <div class="seg" id="mdReadFair"><button data-f="1" class="${this.readFair.value ? "on" : ""}">Bias removed</button><button data-f="0" class="${this.readFair.value ? "" : "on"}">As read</button></div>
     <div class="seg" id="mdReadQ">${used.map((k) => `<button data-q="${k}" class="${k === q ? "on" : ""}">${READ_LINE[k][0]}</button>`).join("")}</div></div>
     <div id="mdRead" class="chart"></div>
-    <div class="tw" style="margin-top:10px"><table class="small stacktable kv"><thead><tr><th>Reading</th><th>Measures</th><th class="n">Count</th><th class="n">Bias${hint("How far this kind of reading sits from the model on average (+ = reads high).")}</th><th class="n">Spread${hint("How noisy this kind of reading is: its typical difference from the model, after the bias.")}</th></tr></thead><tbody>${src}</tbody></table></div></div>` : ""}`;
+    <div class="tw" style="margin-top:10px"><table class="small stacktable kv"><thead><tr><th>Reading</th><th>Measures</th><th class="n">Count</th><th class="n">Bias${hint("How far this kind of reading sits from the model on average (+ = reads high).")}</th><th class="n">Spread${hint("How noisy this kind of reading is: its typical difference from the model, after the bias.")}</th></tr></thead><tbody>${src}</tbody></table></div>${this.readingsFresh()}</div>` : ""}`;
   }
 
   // the model version: of the stored fit, of the code this app runs, of the code on disk (models.physio.PhysioRun)
@@ -406,6 +462,7 @@ class ModelPage extends Page {
     if (!E || !$("#mdEffort")) return;
     const pick = E.s.map((s, i) => (!this.modelDur || s === this.modelDur) ? i : -1).filter((i) => i >= 0)
       .filter((i) => this.showEasy.value || E.kind[i] !== "easy");
+    $("#mdEffortSay").textContent = this.effortSay(pick);
     if (!pick.length) return;
     // both axes over one range (watts on both), so "observed = predicted" runs corner to corner
     const all = pick.flatMap((i) => [E.predicted[i], E.observed[i]]), pad = 0.04 * (Math.max(...all) - Math.min(...all) || 50);
@@ -420,6 +477,16 @@ class ModelPage extends Page {
           return {kind: "dots", shape: sh, r: k === "easy" ? 2 : 3, x: ix.map((i) => E.predicted[i]), y: ix.map((i) => E.observed[i]), color: css(c), name: n, fmt: (v) => fmt(v) + " W"};
         }).filter((q) => q.x.length),
         {kind: "line", x: [lo, hi], y: [lo, hi], color: css("--muted"), dash: true, width: 1, range: false, name: ""}]});
+  }
+
+  // the scatter in one sentence: how many beat the prediction, and how close the closest-to-all-out efforts come
+  effortSay(pick) {
+    const E = this.model.data.efforts, at = this.modelDur ? `At ${this.modelDur / 60} min` : "At every length";
+    if (!pick.length) return "";
+    const r = pick.map((i) => E.observed[i] / E.predicted[i]).sort((a, b) => b - a);
+    const above = r.filter((v) => v > 1.03).length, top = r.slice(0, Math.min(5, r.length)), mid = top[Math.floor(top.length / 2)] - 1;
+    const near = Math.abs(mid) < 0.005 ? "right on the line" : `a median ${fmt(Math.abs(100 * mid))} % ${mid > 0 ? "above" : "below"} it`;
+    return `${at}, last year: ${above} of ${pick.length} efforts beat the prediction by more than 3 %. Your ${top.length} closest to all-out sit ${near}.`;
   }
 
   // one quantity: its model line and the readings of the sources that measure it (dots never in the line's colour)
