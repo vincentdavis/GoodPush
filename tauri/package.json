@@ -1,0 +1,11 @@
+{
+  "name": "goodpush-desktop",
+  "private": true,
+  "description": "The Tauri command line that builds the GoodPush desktop app (tauri/README.md)",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.13.0"
+  }
+}

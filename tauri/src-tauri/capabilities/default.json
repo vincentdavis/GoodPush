@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "None: the window shows goodpush's own page, which needs no access to the desktop app.",
+  "windows": [],
+  "permissions": []
+}

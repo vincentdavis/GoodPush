@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- the server bundle's JIT (numba, JAX) and its unsigned-by-us Python extensions, under the hardened runtime -->
+    <key>com.apple.security.cs.allow-jit</key><true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+    <key>com.apple.security.cs.disable-library-validation</key><true/>
+    <!-- Ride now: the trainer and sensors over Bluetooth, ANT+ sticks over USB -->
+    <key>com.apple.security.device.bluetooth</key><true/>
+    <key>com.apple.security.device.usb</key><true/>
+</dict>
+</plist>

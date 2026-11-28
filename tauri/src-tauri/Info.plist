@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Ride now: macOS asks before an app uses Bluetooth (the trainer, sensors), and quits one that doesn't say why.
+         The ride window runs from the server bundle inside this app, so this app is the one macOS asks for. -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>GoodPush connects to your trainer and sensors over Bluetooth.</string>
+</dict>
+</plist>

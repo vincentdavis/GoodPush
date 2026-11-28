@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>goodpush</title>
+  <!-- what the window shows while goodpush's server starts (src-tauri/src/main.rs then opens the app's page) -->
+  <style>
+    :root { --bg: #f7f6f3; --ink: #1d1d1b; --muted: #5f5e58; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a19; --ink: #f0efec; --muted: #a3a29a; } }
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; background: var(--bg); color: var(--ink);
+           font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 32rem; padding: 1rem; text-align: center; }
+    p { color: var(--muted); }
+    code { font-size: 13px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main id="status">
+    <h1>Starting goodpush…</h1>
+    <p>The first start after an update takes a little longer.</p>
+  </main>
+</body>
+</html>
