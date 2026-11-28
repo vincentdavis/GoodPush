@@ -250,9 +250,21 @@ class ModelPage extends Page {
     }).join("");
     const other = A.filter((x) => !MODEL_Q[x.name]), ck = this.samplerChecks();
     const rough = ck && !ck[0] ? `<p class="small" style="margin:0 0 8px;color:var(--warn)">Rough: the sampling run behind these ranges didn't pass its checks (see Sampler details).</p>` : "";
-    return rows ? `<h2>Today, with its uncertainty${hint("Where the model puts you today: median and 5-95 % range over its draws.\n• Bar: the range around the median (track ±15 %, wider if needed)\n• Narrow: the data pin it down · wide: anywhere in there")}</h2>
+    if (!rows) return this.bestFitSection();
+    return `<h2>Today, with its uncertainty${hint("Where the model puts you today: median and 5-95 % range over its draws.\n• Bar: the range around the median (track ±15 %, wider if needed)\n• Narrow: the data pin it down · wide: anywhere in there")}</h2>
   <div class="card">${rough}<div class="tw"><table><thead><tr><th>Today</th><th class="n">Median</th><th class="n">5–95 %</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${other.length ? `<p class="small muted" style="margin:8px 0 0">Assumed, not learned: ${other.map((x) => `<b>${esc(x.what)}</b> (${esc(x.short)})${hint(x.why)}`).join(" · ")}</p>` : ""}</div>` : "";
+    ${other.length ? `<p class="small muted" style="margin:8px 0 0">Assumed, not learned: ${other.map((x) => `<b>${esc(x.what)}</b> (${esc(x.short)})${hint(x.why)}`).join(" · ")}</p>` : ""}</div>`;
+  }
+
+  // before a sampling run: today's numbers from the best fit (S.physio's last day), so the verdict's "best fit only" has
+  // something to point at; the ranges column says what will fill it (W′ comes in J, shown in kJ as on the Rider page)
+  bestFitSection() {
+    const P = S.physio, i = P?.date ? P.date.length - 1 : -1;
+    const rows = Object.entries(MODEL_Q).filter(([k]) => i >= 0 && P[k] && P[k][i] != null).map(([k, [name, unit]]) =>
+      `<tr><td>${esc(name)}</td><td class="n" data-label="Best fit">${k === "w_prime" ? fmt(P[k][i] / 1000, 1) : fmt(P[k][i])} ${unit}</td>
+        <td class="muted small" data-label="5–95 %">after a sampling run</td></tr>`).join("");
+    return rows ? `<h2>Today, from the best fit${hint("Where the model puts you today, from its single best fit.\n• No range yet: a sampling run adds how sure it is of each number\n• The same numbers as the Rider page")}</h2>
+  <div class="card"><div class="tw"><table class="stacktable kv"><thead><tr><th>Today</th><th class="n">Best fit</th><th>5–95 %</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : "";
   }
 
   fatigueAssumed() {    // the fit couldn't learn what fatigue costs on the day (models.physio.PhysioDiagnostics.assumed)
@@ -263,8 +275,13 @@ class ModelPage extends Page {
     const P = S.physio;
     if (!P || !P.fatigue) return "";
     return `<h2>Fatigue${hint("Your recent hours at CP, fading over ~10 days.\n• Lowers what you can do on the day, not your fitness\n• Slows how fast training turns into fitness\n" + (this.fatigueAssumed() ? "• Its cost on the day is assumed: you ride all-out efforts fresh, so rides can't show it\n" : "• Its cost on the day is learned from your history\n") + "• The plan backs off when more fatigue costs more than it gains, and stays within 10 % above your highest so far")}</h2>
-  <div class="card"><div class="legend"><span><i style="background:var(--s2)"></i>Model fatigue</span><span><i class="dash" style="border-color:var(--s2)"></i>Planned</span>${P.fatigue_cap ? '<span><i class="dash" style="border-color:var(--muted)"></i>Your highest so far</span>' : ""}</div>
+  <div class="card"><div class="legend"><span><i style="background:var(--s2)"></i>Model fatigue</span>${this.fatiguePlanned() ? '<span><i class="dash" style="border-color:var(--s2)"></i>Planned</span>' : ""}${P.fatigue_cap ? '<span><i class="dash" style="border-color:var(--muted)"></i>Your highest so far</span>' : ""}</div>
     <div id="mdFatigue" class="chart sm"></div></div>`;
+  }
+
+  fatiguePlanned() {    // the plan's forecast reaches past the model's last day (else the legend has no dashed line to name)
+    const P = S.physio, last = P.date[P.date.length - 1];
+    return (P.forecast?.date || []).some((x) => x > last);
   }
 
   chartFatigue() {      // the model's fatigue, then the plan's forecast (dashed); opens on the last year
@@ -298,9 +315,8 @@ class ModelPage extends Page {
     const rows = DOMAIN_ORDER.filter((d) => E[d]).map((d) => `<tr><td>${riderPage.swatch(d)}<b>${esc(DOMAIN[d][1])}</b>${dw[d] ? `<div class="small muted">${dw[d]}</div>` : ""}</td>
       <td class="n" data-label="Hours a week">${fmt(hw[d], 1)} h<div class="small muted">${fmt(ex[d])} h in 2 years</div></td>
       ${PARTS.map(([k, n]) => share(d, k).replace("<td", `<td data-label="${n}"`)).join("")}</tr>`).join("");
-    return `<h3 class="mdsub">What each kind of riding did for you (last 12 months)</h3>
-  <div class="card">${hint("Each kind of riding: your hours a week and its share of each gain (how much you rode × how well it trains that part). A column adds up to 100 %.\n• Below a share: how well it trains that part vs the model's prior\n• \"≈ as assumed\": your data barely changed it (an assumption, not a finding)\n• LT1 closer to 1-h power: how high easy riding reaches\n• CP closer to MAP: how much of it you can sustain\n• MAP: 5-minute power, the ceiling")}
-    <div class="tw"><table class="stacktable"><thead><tr><th>Riding</th><th class="n">Hours a week</th>${PARTS.map(([, n]) => `<th style="min-width:130px">${n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<h3 class="mdsub">What each kind of riding did for you (last 12 months)${hint("Each kind of riding: your hours a week and its share of each gain (how much you rode × how well it trains that part). A column adds up to 100 %.\n• Below a share: how well it trains that part vs the model's prior\n• \"≈ as assumed\": your data barely changed it (an assumption, not a finding)\n• LT1 closer to 1-h power: how high easy riding reaches\n• CP closer to MAP: how much of it you can sustain\n• MAP: 5-minute power, the ceiling")}</h3>
+  <div class="card"><div class="tw"><table class="stacktable"><thead><tr><th>Riding</th><th class="n">Hours a week</th>${PARTS.map(([, n]) => `<th style="min-width:130px">${n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   html() {

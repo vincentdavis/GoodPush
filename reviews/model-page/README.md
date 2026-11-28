@@ -110,6 +110,18 @@ Most of the other findings were fixed in a second pass:
 Still open: the 💡 hints (25 after a sampling run) could become one-line captions where they hold a section's main
 idea. That's a copy change best made with the guide's author.
 
+## Third pass (2026-11-28, model v17, before any sampling run)
+
+A fresh look at the page as a new model version leaves it: best fit only, no ranges.
+
+| Finding | Severity | Done |
+|---|---|---|
+| The verdict said "today's numbers come from the best fit only", but the page didn't show them: "Today, with its uncertainty" disappears without ranges | Moderate | **Today, from the best fit**: CP, MAP, FTP, LT1 and W′ (in kJ, as on the Rider page), with "after a sampling run" where the range will go |
+| The fatigue legend named a dashed "Planned" line that isn't drawn when there's no plan | Minor | "Planned" shows only when the plan's forecast reaches past today |
+| The riding table's 💡 sat alone on a row at the top of its card | Minor | It sits in the heading, like every other section |
+
+![After: today's numbers from the best fit](img/after-best-fit.jpg)
+
 ## What works well
 
 * The page shows its doubts: ranges, divergences, bias and spread, and "≈ as assumed" where the data barely moved a

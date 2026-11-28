@@ -311,6 +311,20 @@ def test_the_model_page_answers_can_i_trust_it_at_the_top():
     assert "j.stage || j.other" in model                         # keeps polling while a run started elsewhere goes on
 
 
+def test_the_model_page_shows_todays_best_fit_before_any_ranges():
+    """2026-11-28 Model page review: before a sampling run the verdict says today's numbers come from the best fit,
+    so the page shows them (W' in kJ, as on the Rider page); the fatigue legend names "Planned" only when the plan's
+    forecast draws that dashed line; the riding table's hint sits in its heading, not alone in the card."""
+    model = (JS / "pages" / "model.js").read_text(encoding="utf-8")
+    assert "if (!rows) return this.bestFitSection();" in model
+    best = model.split("bestFitSection() {", 1)[1].split("\n  }\n", 1)[0]
+    assert "Today, from the best fit" in best and "after a sampling run" in best and "/ 1000" in best
+    fatigue = model.split("fatigueSection() {", 1)[1].split("\n  }\n", 1)[0]
+    assert "this.fatiguePlanned() ?" in fatigue
+    riding = model.split("ridingSection() {", 1)[1].split("\n  }\n", 1)[0]
+    assert '<div class="card">${hint(' not in riding
+
+
 def test_the_intensity_colours_keep_their_order_in_both_themes():
     """--z1 (easy) is the yellow end and --z7 (hard) the blue end in light and dark alike (the dark theme reversed
     the scale before 2026-11-27); text on a zone colour (--on-z*) stays readable on it."""
