@@ -57,3 +57,21 @@ def test_code_names_no_rider(tmp_path):
     assert check('"""athlete_name\'s data: 6 W"""', name="tests/test_x.py", terms=terms, tmp=tmp_path)
     assert not check('authors = [{ name = "athlete_name" }]', name="pyproject.toml", terms=terms, tmp=tmp_path)
     assert not check("# the cap a rider likes", name="src/goodpush/plan.py", terms=terms, tmp=tmp_path)
+
+
+def test_binary_files_are_refused_except_a_design_reviews_screenshots(tmp_path, monkeypatch):
+    """2026-11-28: a design review (reviews/<page>/README.md) keeps its screenshots of a synthetic rider beside it, in
+    reviews/<page>/img/; any other binary file, an image elsewhere included, is still refused."""
+    monkeypatch.chdir(tmp_path)
+    jpg = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 64
+    for rel in ("reviews/model-page/img/after.jpg", "reviews/model-page/after.jpg", "docs/shot.png",
+                "reviews/model-page/img/sub/after.jpg", "reviews/model-page/img/data.bin"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_bytes(jpg)
+    c = PrivacyCheck(ROOT / "no_such_file")
+    for rel in ("reviews/model-page/img/after.jpg", "reviews/model-page/after.jpg", "docs/shot.png",
+                "reviews/model-page/img/sub/after.jpg", "reviews/model-page/img/data.bin"):
+        c.check_file(rel)
+    assert [p.split(":")[0] for p in c.problems] == ["reviews/model-page/after.jpg", "docs/shot.png",
+                                                     "reviews/model-page/img/sub/after.jpg",
+                                                     "reviews/model-page/img/data.bin"]

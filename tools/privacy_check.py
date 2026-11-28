@@ -10,7 +10,8 @@ and your own terms in
 privacy_terms.txt in goodpush's machine folder (TERMS_FOLDERS; one per line: names, address, serial numbers ...; that file stays private).
 A term written "code: NAME" applies only to the package's code, tests and model docs (CODE_PATHS): the
 software is for any rider, so it names none - while NAME may still sign the licence and the author fields.
-A line with "privacy: ok" in it is let through.
+A line with "privacy: ok" in it is let through. Binary files are refused, except a design review's screenshots
+(REVIEW_IMAGES: reviews/<page>/img/, made from a synthetic rider).
 """
 from __future__ import annotations
 
@@ -27,6 +28,9 @@ class PrivacyCheck:
         r"(^|/)\.env(\..*)?$",
         r"\.(fit|gpx|tcx|h5|hdf5|parquet|npz|zip|pem|key|p12|pfx)$", r"(^|/)ride_devices\.json$",
         r"(token|secret|credential)s?[^/]*\.json$")]
+    # a design review's screenshots (reviews/<page>/img/), the one place a binary file may go in: made from a synthetic
+    # rider (goodpush synth), never your own data
+    REVIEW_IMAGES = re.compile(r"^reviews/[^/]+/img/[^/]+\.(jpe?g|png|webp)$", re.I)
     SAFE_EMAIL = re.compile(r"@(example\.(com|org|net)|users\.noreply\.github\.com|anthropic\.com)$", re.I)
     SAFE_HOME = {"you", "user", "username", "name", "<name>", "<you>", "<user>", "me", "runner", "public",
                  "default", "%username%"}
@@ -117,6 +121,8 @@ class PrivacyCheck:
         except OSError:
             return                                   # deleted / moved
         if b"\0" in data[:8000]:
+            if self.REVIEW_IMAGES.search(PurePosixPath(path.replace("\\", "/")).as_posix()):
+                return
             self.problems.append(f"{path}: binary file - commit only source and docs")
             return
         self.check_text(path, data.decode("utf-8", errors="replace"))

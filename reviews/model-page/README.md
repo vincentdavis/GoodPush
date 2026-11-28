@@ -1,7 +1,5 @@
 # Model page: design critique and fixes
 
-The screenshots named below are in the pull request's description (the repository holds no binary files).
-
 A design critique of the Model page (`#model`), done on 2026-11-27 against `main` after the Tailwind CSS + daisyUI
 restyle, and the fixes for its five highest-priority findings. The other findings are listed at the end for later.
 
@@ -27,27 +25,27 @@ ranges) and the second said "not yet" (they can't be trusted). Before a run they
 "Run sampling + backtest" button sat alone in a full-width strip between them, and "Today, with its uncertainty"
 showed its 5–95 % ranges with no warning.
 
-_Screenshot in the PR description: Before: two Ranges tiles (`before-status.jpg`)._
+![Before: two Ranges tiles](img/before-status.jpg)
 
 **After:** a single verdict card opens the page: **Ranges: none yet / rough / trustworthy / from an earlier run**,
 with one sentence on why and the run button underneath it. The button is the primary action only when the ranges
 need a run. Status keeps Version, Fitted to and Backtest, plus the forecast-check tiles when there are any. Dates are
 short ("Nov 26"), so the tiles no longer wrap. When the checks failed, the uncertainty table says its ranges are rough.
 
-_Screenshot in the PR description: After: one verdict (`after-status.jpg`)._
+![After: one verdict](img/after-status.jpg)
 
 ### 2. Predicted vs observed reads as predicted vs observed
 
 **Before:** neither axis had a title, and the two axes used different ranges (x 220–264 W, y 100–300 W). The
 "observed = predicted" line came out almost flat, so "on the line" and "well above it" were hard to judge.
 
-_Screenshot in the PR description: Before: flat identity line (`before-predicted.jpg`)._
+![Before: flat identity line](img/before-predicted.jpg)
 
 **After:** both axes are titled (*Predicted: the model's all-out power that day*, *Observed: your best*) and share one
 range and tick step, so the identity line runs corner to corner. This uses three new `EChart.draw` options in
 `charts.js` (`xName` / `yName`, `yDomain`, `tick`), which other charts can use too.
 
-_Screenshot in the PR description: After: titled, equal axes (`after-predicted.jpg`)._
+![After: titled, equal axes](img/after-predicted.jpg)
 
 ### 3. Intensity colours keep their order in dark mode
 
@@ -55,13 +53,13 @@ _Screenshot in the PR description: After: titled, equal axes (`after-predicted.j
 bright yellow (hard) in dark mode. The scale flipped, so in dark mode the hardest riding got the colour that meant
 easiest in light mode. This shows on the Model, Rider, Calendar and Ride pages.
 
-_Screenshot in the PR description: Before: reversed scale in dark mode (`before-riding-themes.jpg`)._
+![Before: reversed scale in dark mode](img/before-riding-themes.jpg)
 
 **After:** dark mode keeps the yellow → blue order, with lighter blues that stay visible on the dark background
 (each at least 4.2:1 against the card). Text drawn on those colours uses new `--on-z1/3/5/7` tokens, so it stays
 readable in both themes.
 
-_Screenshot in the PR description: After: same order in both themes (`after-riding-themes.jpg`)._
+![After: same order in both themes](img/after-riding-themes.jpg)
 
 ### 4. Threshold readings on the same footing as the model
 
@@ -69,13 +67,13 @@ _Screenshot in the PR description: After: same order in both themes (`after-ridi
 that explains the gap was only in the table underneath, so at a glance the model looked about 20 W off. Sources had
 code names (`alpha1 lt1`, `ramp lt2`).
 
-_Screenshot in the PR description: Before: readings 20 W above the line (`before-threshold.jpg`)._
+![Before: readings 20 W above the line](img/before-threshold.jpg)
 
 **After:** a **Bias removed / As read** switch (bias removed by default, remembered per browser) divides each reading
 by its source's learned offset, so readings can be compared with the model's line. Sources have plain names
 ("alpha1 on rides (LT1)", "Ramp test, alpha1 (LT2)", "FTP you entered"…) in the legend, the tooltip and the table.
 
-_Screenshot in the PR description: After: bias removed (`after-threshold.jpg`)._
+![After: bias removed](img/after-threshold.jpg)
 
 ### 5. Progress for a sampling run started elsewhere
 
@@ -88,7 +86,7 @@ holds the NUTS lock (`PhysioRun.tracked`). Peer sync already skips `*.log`. `/ap
 `other`, and the page shows "A sampling run started outside the app is going on · 4 min so far", with that line. It
 keeps polling and reloads the model when the run ends.
 
-_Screenshot in the PR description: After: a run started from a terminal (`after-run-elsewhere.jpg`)._
+![After: a run started from a terminal](img/after-run-elsewhere.jpg)
 
 ## Second pass (after upstream 0.4.1)
 
@@ -107,7 +105,7 @@ Most of the other findings were fixed in a second pass:
 | Segmented buttons were 40 px tall | Minor (a11y) | 44 px on phones |
 | Range bars used a different hue per row | Minor | Upstream's zone colour map (0.4.1) now colours them by intensity |
 
-_Screenshot in the PR description: Phone: the readings table, one card per row (`after-phone-readings.jpg`)._
+![Phone: the readings table, one card per row](img/after-phone-readings.jpg)
 
 Still open: the 💡 hints (25 after a sampling run) could become one-line captions where they hold a section's main
 idea. That's a copy change best made with the guide's author.
@@ -122,7 +120,7 @@ A fresh look at the page as a new model version leaves it: best fit only, no ran
 | The fatigue legend named a dashed "Planned" line that isn't drawn when there's no plan | Minor | "Planned" shows only when the plan's forecast reaches past today |
 | The riding table's 💡 sat alone on a row at the top of its card | Minor | It sits in the heading, like every other section |
 
-_Screenshot in the PR description: After: today's numbers from the best fit (`after-best-fit.jpg`)._
+![After: today's numbers from the best fit](img/after-best-fit.jpg)
 
 ## Additions (2026-11-28)
 
@@ -136,9 +134,9 @@ Five things the page didn't say, added after the third pass:
 | **Predicted vs observed in one sentence**: how many efforts beat the prediction, and how close the five closest to all-out sit | under the chart, follows the duration buttons | the efforts already on the page |
 | **How fresh the readings are**: the latest LT1 and CP reading, and a ramp test named when one is older than 6 weeks | under the readings table | the readings already on the page |
 
-_Screenshot in the PR description: Today's numbers with their 6-week change and what the latest rides moved (`after-trend-moved.jpg`)._
+![Today's numbers with their 6-week change and what the latest rides moved](img/after-trend-moved.jpg)
 
-_Screenshot in the PR description: What the fit used (`after-fit-used.jpg`)._
+![What the fit used](img/after-fit-used.jpg)
 
 ## What works well
 
