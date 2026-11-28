@@ -14,6 +14,7 @@ load, a physiological model and an adaptive plan out. It runs as a local web app
 | `src/goodpush/cli.py` | the `goodpush` command (argparse subcommands: `app`, `sync`, `update`, `plan`, `physio`, `ride`, ...) |
 | `src/goodpush/launcher.py` | `goodpush-app`: starts the server, opens the browser, shows the tray icon (what the installers run) |
 | `src/goodpush/app/server.py` | the app's backend: a stdlib `http.server.ThreadingHTTPServer` with one handler (`make_handler`) serving the JSON API and the static files; background work in `Jobs`, the Garmin auto-sync thread in `serve` |
+| `src/goodpush/app/diagnostics.py` | Settings > Diagnostics: the facts (`Diagnostics`, one `Fact` per line), the log viewer's files, and `AppLog` (the app's own output in `app.log`) |
 | `src/goodpush/app/static/` | the front end: `index.html`, `app.css` (compiled from `styles/app.css`: never edit it), plain ES modules in `js/` (one `Page` subclass per page in `js/pages/`, calendar in `js/calendar/`), charts on ECharts |
 | `styles/` | the stylesheet's source (Tailwind CSS v4 + daisyUI 5), `build.py`, vendored daisyUI: see "Styles" below |
 | `src/goodpush/app/static/vendor/` | third-party files copied in unchanged (`echarts.esm.min.js` and its licences). Don't edit; pre-commit skips this folder |
@@ -103,6 +104,12 @@ From `CONTRIBUTING.md` and the checks; `tools/hygiene_check.py` enforces some of
   globals, no inline `onclick=` (add listeners in `wire()`). Reuse the shared classes (`TimeWindow`,
   `Segmented`, `Pref`, `Lazy`) before writing new ones.
 - **Every change comes with a test** in `tests/`.
+- **Diagnostics grow with the features.** Settings > Diagnostics (`app/diagnostics.py`, `static/js/diagnostics.js`)
+  is where a rider or a developer looks first when something is off. With each feature, add or suggest in the PR
+  the facts that would help debug it: its version, a count, when it last ran and whether it worked, where its files
+  or log are. One `Fact` per line in a `Diagnostics` group; mark anything that names the rider, a folder, an
+  address or a sign-in `private=True`, so `shareable()` (the page's "Copy for a bug report", and the athlete
+  diagnostic export later) never carries it. A long run writes its log into `Project.logs`, and the viewer lists it.
 - **Plain language** in the app's text: what it means for the rider, briefly.
 - The PR template is `.github/pull_request_template.md`: fill in what changed, why, and how it was tested.
 

@@ -1222,13 +1222,15 @@ class Jobs:
         log = Progress(add, step)                # callable like print, plus the progress bar
 
         def run():
-            ok = True
+            ok, name, t0 = True, self.cur["name"], time.time()
+            print(f"job started: {name}")          # the app log's record of what ran (AppLog)
             try:
                 fn(log)
             except BaseException as e:  # noqa: BLE001 - report every failure in the UI
                 ok = False
                 log(f"failed: {e}")
                 traceback.print_exc()
+            print(f"job {'finished' if ok else 'failed'}: {name} ({time.time() - t0:.0f} s)")
             with self.lock:                       # the waiting job takes over without an idle moment
                 self.cur.update(running=False, ok=ok)
                 nxt, self.next = self.next, None
@@ -2307,6 +2309,16 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                                                                                  out["inputs"]["first_day"])
                     out["run"] = full_run.status()
                     return self._json(out)
+                if u.path in ("/api/diagnostics", "/api/log"):     # Settings > Diagnostics (app/diagnostics.py)
+                    from .diagnostics import Diagnostics
+                    diag = Diagnostics.of_app(proj, jobs, hub, self.server.server_address[1], lan)
+                    if u.path == "/api/diagnostics":
+                        return self._json({**diag.report(), "shareable_text": diag.shareable_text()})
+                    try:
+                        return self._json(diag.tail((q.get("where") or [""])[0], (q.get("name") or [""])[0],
+                                                    int((q.get("lines") or [diag.LOG_LINES])[0])))
+                    except KeyError as e:
+                        return self._json({"error": str(e)}, 404)
                 if u.path == "/api/model_run":          # the Model page's full run, while it goes (FullModelRun)
                     return self._json(full_run.status())
                 if u.path == "/api/alive":
@@ -2416,6 +2428,20 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
                     self._json({"ok": True})
                     threading.Thread(target=self.server.shutdown, name="goodpush quit", daemon=True).start()
                     return None
+                if body.get("action") == "reveal":       # Diagnostics: a folder or log in Finder / Explorer
+                    if self.client_address[0] not in ("127.0.0.1", "::1"):
+                        return self._json({"error": "Open folders on the computer running goodpush."}, 400)
+                    from ..io.strava import StravaUpload
+                    from .diagnostics import Diagnostics
+                    diag = Diagnostics.of_app(proj, jobs, hub, self.server.server_address[1], lan)
+                    if body.get("name"):
+                        target = diag.log_path(str(body.get("where") or ""), str(body["name"]))
+                    else:
+                        target = diag.folders()[str(body.get("folder") or "")]
+                    if not body.get("name"):
+                        target.mkdir(parents=True, exist_ok=True)
+                    StravaUpload.reveal(target)
+                    return self._json({"ok": True})
                 if body.get("action") == "incyclist_settings" and self.client_address[0] not in ("127.0.0.1", "::1"):
                     return self._json({"error": "Change the Incyclist settings on the PC running goodpush."}, 400)
                 if body.get("action") in ("icu_key", "icu_forget"):     # the key only travels from this PC's browser

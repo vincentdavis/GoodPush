@@ -315,6 +315,8 @@ def main(argv: list[str] | None = None) -> None:
     from .progress import Console
     Folders.migrate()                            # the folders from before, once (cli.main does it for commands)
     Console.no_quick_edit()                      # started from a terminal: a click must not freeze it
+    from .app.diagnostics import AppLog
+    AppLog.start()                               # its output into app.log (Settings > Diagnostics shows it)
     App().run()
 
 

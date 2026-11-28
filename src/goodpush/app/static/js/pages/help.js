@@ -42,6 +42,7 @@ class HelpPage extends Page {
     ${this.action("numbers", "Do the numbers make sense?", false, "Know your body? Compare your numbers on <a href=\"#rider\">Rider</a> with a lab or ramp test, a race, or how sessions feel. Matches count too: the model has been tested on very few people.")}
     ${this.action("idea", "Idea or question", false, "Something you'd like it to do, or a sentence that confused you.")}
     <p class="small muted" style="margin:4px 0 0">These open GitHub in your browser (a free account is needed). Only your GoodPush version and kind of computer are filled in, and nothing is posted until you press Submit there. Issues are public: never attach ride files or exports, and check screenshots for your name, maps and health numbers.</p>
+    <p class="small muted" style="margin:4px 0 0">Reporting a problem? <a href="#settings/diagnostics">Settings → Diagnostics</a> has <b>Copy for a bug report</b> (versions and counts, no folders or names) to paste into it, and the logs.</p>
   </div>
   <h2>Learn more</h2>
   <div class="card small">
