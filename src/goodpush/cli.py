@@ -545,7 +545,9 @@ def cmd_plan(args):
 
 def cmd_app(args):
     """Start the goodpush app (pages + buttons) in your browser."""
+    from .app.diagnostics import AppLog
     from .app.server import serve
+    AppLog.start()                               # its output also into app.log (Settings > Diagnostics shows it)
     serve(_proj(args), port=args.port, lan=args.lan, open_browser=not args.no_browser)
 
 

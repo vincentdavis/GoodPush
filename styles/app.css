@@ -766,3 +766,13 @@ details.setsec[open] > summary { border-bottom:1px solid var(--grid); border-rad
 .maint p { margin:0 }
 .maint .btn { width:100% }
 @media (max-width:640px) { .maint { grid-template-columns:1fr; gap:4px } .maint p { margin-bottom:10px } }
+
+/* Settings > Diagnostics (js/pages/diagnostics.js) */
+.diaggrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px 28px }
+.diaggrid h3 { margin:0 0 4px }
+.diaggrid > .wide { grid-column:1 / -1 }
+.diaggrid > .wide td:first-child { width:30% }
+.diaggrid td { padding:5px 6px }
+.diaggrid td:first-child { white-space:normal; color:var(--ink2); width:45% }
+.diagpath { font:12px ui-monospace,Consolas,monospace; overflow-wrap:anywhere }
+.log.tall { max-height:420px; overflow-wrap:anywhere }

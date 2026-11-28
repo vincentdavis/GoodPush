@@ -1,4 +1,4 @@
-// Settings: Garmin / Google Health, other computers, Incyclist, the goodpush.toml sections (SettingsPage).
+// Settings: Garmin / Google Health, other computers, Incyclist, the goodpush.toml sections, Diagnostics (SettingsPage).
 import {Page} from "./page.js";
 import {api, jobs, S, toast} from "../api.js";
 import {$, esc, fmt, LOCAL} from "../util.js";
@@ -8,6 +8,7 @@ import {DAYS, SAVE_LABEL, WIDE_KINDS} from "./plan.js";
 import {markers} from "../markers.js";
 import {el} from "../charts.js";
 import {ask, Pref} from "../controls.js";
+import {diagnostics} from "../diagnostics.js";
 
 // what each goodpush.toml section holds, shown beside its title while it is closed
 const SECTION_NOTE = {
@@ -90,6 +91,7 @@ class SettingsPage extends Page {
     <p class="small muted" style="margin:12px 0 0">Last analysis: ${lastRun ? esc(lastRun) : "never"}</p>
     ${(S.notes || []).length ? `<h3 style="margin:14px 0 4px">Data notes</h3><ul class="small muted" style="margin:0">${S.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
   </div>`)}
+  ${this.section("diagnostics", "Diagnostics", `GoodPush ${esc(S.about?.version || "")} · versions, folders and logs`, diagnostics.card())}
   <p class="small muted" style="margin-top:16px">GoodPush ${esc(S.about?.version || "")} (beta) · <a href="#help">Help &amp; feedback</a> · where the methods come from: <a href="#sources">Sources</a>.</p>`;
   }
 
@@ -349,7 +351,7 @@ class SettingsPage extends Page {
     });
     label();
     // an edit not saved yet shows on the section's title, so closing it doesn't hide it
-    secs.forEach((d) => {
+    secs.filter((d) => d.dataset.secId !== "diagnostics").forEach((d) => {     // Diagnostics saves nothing
       const mark = () => { d.querySelector(".setdirty").hidden = false; };
       d.querySelector(".setbody").addEventListener("input", mark);
       d.querySelectorAll(".days button").forEach((b) => b.addEventListener("click", mark));
@@ -363,6 +365,7 @@ class SettingsPage extends Page {
       requestAnimationFrame(() => target.scrollIntoView({block: "start"}));
     }
     if (!want) this.jumped = "";
+    diagnostics.wire($("#set-diagnostics"));
     $("#physiofresh")?.addEventListener("click", async () => {
       if (!await ask.confirm({title: "Fit the model from scratch?", yes: "Fit from scratch", danger: true,
         text: "It starts from the model's priors instead of the last fit (the same as goodpush physio --fresh), then "
