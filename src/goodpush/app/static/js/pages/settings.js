@@ -315,6 +315,7 @@ class SettingsPage extends Page {
     else if (f.kind === "numbers") input = `<div class="avail">${f.keys.map((k) =>
       `<label class="f">${esc(k)}${num((v || {})[k], `data-n="${k}"`)}</label>`).join("")}</div>`;
     else if (f.kind === "history") input = `<textarea class="snip" rows="4">${esc(Object.entries(v || {}).map(([d, w]) => `${d} ${w}`).join("\n"))}</textarea>`;
+    else if (f.kind === "lines") input = `<textarea class="snip" rows="3">${esc((v || []).join("\n"))}</textarea>`;
     else if (f.kind === "events") input = `<textarea class="snip" rows="4">${esc((v || []).map((e) =>
       [e.date, e.end || e.date, e.type, e.note || ""].join(", ")).join("\n"))}</textarea>`;
     else input = `<input type="text" value="${esc(v ?? "")}" ${f.hi ? `maxlength="${f.hi}"` : ""}>`;

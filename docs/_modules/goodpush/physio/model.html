@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
         <link rel="canonical" href="https://goodpush.github.io/GoodPush/_modules/goodpush/physio/model.html">
+        <link rel="prefetch" href="../../../_static/logo-light.svg" as="image">
+        <link rel="prefetch" href="../../../_static/logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 9.2.0 and Furo 2025.12.19 -->
-        <title>goodpush.physio.model - GoodPush 0.1.1.dev3+g5f9e9f33a.d20261122</title>
+    <link rel="shortcut icon" href="../../../_static/mark.svg"><!-- Generated with Sphinx 9.2.0 and Furo 2025.12.19 -->
+        <title>goodpush.physio.model - GoodPush 0.4.0</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -165,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">GoodPush 0.1.1.dev3+g5f9e9f33a.d20261122</div></a>
+      <a href="../../../index.html"><div class="brand">GoodPush 0.4.0</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -185,8 +187,11 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../_static/logo-light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../_static/logo-dark.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">GoodPush 0.1.1.dev3+g5f9e9f33a.d20261122</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -307,7 +312,8 @@
 <span class="sd">  sd ALL_OUT_SD, around the fatigued curve) or not (log deficit below the *capacity* curve ~ Gamma,</span>
 <span class="sd">  one shape; its mean a straight line in log duration (log), plus a step per ride kind: easy / hard /</span>
 <span class="sd">  test-race - by mean and shape, not scale and shape: those two slid along a ridge, correlation -0.94). Deficits are measured from capacity so an easy</span>
-<span class="sd">  day after a hard one reads as a choice, not as fatigue;</span>
+<span class="sd">  day after a hard one reads as a choice, not as fatigue. Either way a small fixed share (BAD_READING_SHARE) may</span>
+<span class="sd">  be bad readings, spread evenly in log power: one broken power meter's best no longer drags the curve to it;</span>
 <span class="sd">* threshold readings (your FTP entries, alpha1, ramp tests) with a fitted bias and error per source;</span>
 <span class="sd">* steady stretches (rides, &gt;= 5-min reps): power at their heart rate. log power = log CP + g(HR / LTHR) + an offset</span>
 <span class="sd">  for reps + c F + error: g is the rider's own heart-rate-to-power curve (HR_KNOTS, linear between), c how fatigue</span>
@@ -338,7 +344,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.curve</span><span class="w"> </span><span class="kn">import</span> <span class="n">PowerCurve</span>
 
 <span class="n">STATES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"map"</span><span class="p">,</span> <span class="s2">"f_e"</span><span class="p">,</span> <span class="s2">"f_t"</span><span class="p">,</span> <span class="s2">"pmax"</span><span class="p">,</span> <span class="s2">"durability"</span><span class="p">)</span>
-<span class="n">VERSION</span> <span class="o">=</span> <span class="mi">16</span>        <span class="c1"># bumped when a state's meaning or the parameters change (2: f_E = LT1 / 1-h power; 3: shared</span>
+<span class="n">VERSION</span> <span class="o">=</span> <span class="mi">17</span>        <span class="c1"># bumped when a state's meaning or the parameters change (2: f_E = LT1 / 1-h power; 3: shared</span>
 <span class="c1">#                      noise, one deficit shape, f_E's z1 / z2 effect shared; 4: noise per state again; 5: the</span>
 <span class="c1">#                      heart-rate curve instead of HR readings scaled to threshold; 6: a reservoir rate per trained</span>
 <span class="c1">#                      state; 7: LT1 trained by endurance hours alone, the deficit by its mean, HR fatigue centred;</span>
@@ -350,7 +356,8 @@
 <span class="c1">#                      weeks may change more (PhysioData.noise_scale), VO2 effects on MAP held near the studies; 13: a week's</span>
 <span class="c1">#                      unexplained change spread over its days; 14: LT1 share's detraining time constant prior narrower;</span>
 <span class="c1">#                      15: z3 = severe by heart rate where there is heart rate; 16: the LT1-MAP band split by power and</span>
-<span class="c1">#                      heart-rate evidence together, metrics.severe_hr): a stored fit is refitted</span>
+<span class="c1">#                      heart-rate evidence together, metrics.severe_hr; 17: a ride best may be a bad reading,</span>
+<span class="c1">#                      BAD_READING_SHARE): a stored fit is refitted</span>
 <span class="c1"># without a level of the rider's own (PhysioData.level_w): the start of MAP and Pmax (W) a trained rider's; and the</span>
 <span class="c1"># detrained floors as shares of the start, whoever the rider</span>
 <span class="n">GENERIC_LEVEL_W</span> <span class="o">=</span> <span class="p">(</span><span class="mf">290.0</span><span class="p">,</span> <span class="mf">900.0</span><span class="p">)</span>
@@ -408,6 +415,13 @@
 <span class="c1"># all-out efforts scatter this much (log) around the curve: power meter + day-to-day. Fixed: when fitted</span>
 <span class="c1"># it widens until the "all-out" part of the mixture describes ordinary rides</span>
 <span class="n">ALL_OUT_SD</span> <span class="o">=</span> <span class="mf">0.03</span>
+<span class="c1"># a ride best may be a bad reading (a broken power meter: 4:20 at 1000 W, heart rate 132): this fixed share of them</span>
+<span class="c1"># are, spread evenly over BAD_READING_WIDTH of log power. Without it one such best sat ~40 ALL_OUT_SDs above the curve</span>
+<span class="c1"># and lifted CP +86 %, MAP +119 % over a whole synthetic history (2026-11-26); with it a lone best more than ~12 %</span>
+<span class="c1"># (easy ride) to ~15 % (test) over the curve costs about -log(SHARE / WIDTH) ~ 10 and pulls no further, while</span>
+<span class="c1"># several that agree still move the curve. Fixed, not fitted (a fitted share would explain ordinary rides away)</span>
+<span class="n">BAD_READING_SHARE</span> <span class="o">=</span> <span class="mf">1e-4</span>
+<span class="n">BAD_READING_WIDTH</span> <span class="o">=</span> <span class="mf">2.0</span>
 <span class="n">MIN_SHAPE</span> <span class="o">=</span> <span class="mf">2.0</span>              <span class="c1"># Gamma shape of the effort deficit (see effort_terms)</span>
 <span class="c1"># hard physical limits on the unconstrained states (MAP 40..1500 W, LT1/1-h 0.2..0.98, CP/MAP 0.4..0.98,</span>
 <span class="c1"># Pmax 100..3000 W, fade 0.005..1): keeps wild optimiser trial points finite; nothing real is near them</span>
@@ -975,7 +989,9 @@
         <span class="n">scale</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"log_deficit"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">p</span><span class="p">[</span><span class="s2">"log_deficit"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="s2">"effort_x"</span><span class="p">]</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="s2">"log_scale_kind"</span><span class="p">]][</span><span class="n">k</span><span class="p">])</span> <span class="o">/</span> <span class="n">shape</span>
         <span class="n">lg</span> <span class="o">=</span> <span class="n">gamma</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="o">-</span><span class="n">u</span><span class="p">,</span> <span class="mf">1e-9</span><span class="p">),</span> <span class="n">shape</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
         <span class="n">submax</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">u</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">log_sigmoid</span><span class="p">(</span><span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="s2">"logit_pi"</span><span class="p">])[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">lg</span><span class="p">,</span> <span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"effort_live"</span><span class="p">],</span> <span class="n">a</span><span class="p">[</span><span class="s2">"effort_weight"</span><span class="p">]</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logaddexp</span><span class="p">(</span><span class="n">all_out</span><span class="p">,</span> <span class="n">submax</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">)</span></div>
+        <span class="n">good</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="o">-</span><span class="n">BAD_READING_SHARE</span><span class="p">)</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logaddexp</span><span class="p">(</span><span class="n">all_out</span><span class="p">,</span> <span class="n">submax</span><span class="p">)</span>
+        <span class="n">term</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logaddexp</span><span class="p">(</span><span class="n">good</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">BAD_READING_SHARE</span> <span class="o">/</span> <span class="n">BAD_READING_WIDTH</span><span class="p">))</span>   <span class="c1"># or a bad reading</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"effort_live"</span><span class="p">],</span> <span class="n">a</span><span class="p">[</span><span class="s2">"effort_weight"</span><span class="p">]</span> <span class="o">*</span> <span class="n">term</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PhysioModel.quantities">
@@ -1146,7 +1162,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=bd079e7e"></script>
+</div><script src="../../../_static/documentation_options.js?v=757451c5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>

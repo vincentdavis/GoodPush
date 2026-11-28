@@ -9,7 +9,7 @@
         <link rel="prefetch" href="../_static/logo-dark.svg" as="image">
 
     <link rel="shortcut icon" href="../_static/mark.svg"><!-- Generated with Sphinx 9.2.0 and Furo 2025.12.19 -->
-        <title>Likelihood - GoodPush 0.3.0</title>
+        <title>Likelihood - GoodPush 0.4.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">GoodPush 0.3.0</div></a>
+      <a href="../index.html"><div class="brand">GoodPush 0.4.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -298,13 +298,14 @@ against the fatigued curve <span class="math notranslate nohighlight">\(C\,e^{-s
 <a class="reference internal" href="dynamics.html"><span class="doc">Dynamics</span></a>). Either the effort was <strong>all-out</strong>, with probability <span class="math notranslate nohighlight">\(\psi_k\)</span>, or it wasn’t:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[p(y) = \psi_k\; \mathcal N\!\left(v_F;\ 0,\ 0.03\right)
+\[p(y) = (1 - \beta)\left[\psi_k\; \mathcal N\!\left(v_F;\ 0,\ 0.03\right)
      \;+\; (1 - \psi_k)\; \mathbb 1[v &lt; 0]\;
-     \mathrm{Gamma}\!\left(-v;\ \alpha,\ \mu_\Delta\, e^{\kappa_k} / \alpha\right)\]</div>
+     \mathrm{Gamma}\!\left(-v;\ \alpha,\ \mu_\Delta\, e^{\kappa_k} / \alpha\right)\right] \;+\; \beta / w\]</div>
 </div>
 <p>where <span class="math notranslate nohighlight">\(p(y)\)</span> is the likelihood of the best power, <span class="math notranslate nohighlight">\(\mathcal N(v; 0, 0.03)\)</span> the normal density with
 mean 0 and standard deviation 0.03 at <span class="math notranslate nohighlight">\(v\)</span>, <span class="math notranslate nohighlight">\(\mathrm{Gamma}(v; \alpha, \theta)\)</span> the gamma density with
-shape <span class="math notranslate nohighlight">\(\alpha\)</span> and scale <span class="math notranslate nohighlight">\(\theta\)</span>, and <span class="math notranslate nohighlight">\(\mathbb 1[v &lt; 0]\)</span> is 1 below capacity, else 0. Fitted:</p>
+shape <span class="math notranslate nohighlight">\(\alpha\)</span> and scale <span class="math notranslate nohighlight">\(\theta\)</span>, <span class="math notranslate nohighlight">\(\mathbb 1[v &lt; 0]\)</span> is 1 below capacity, else 0, and
+<span class="math notranslate nohighlight">\(\beta = 10^{-4}\)</span>, <span class="math notranslate nohighlight">\(w = 2\)</span> the bad-reading share and width (below). Fitted:</p>
 <ul class="simple">
 <li><p><span class="math notranslate nohighlight">\(\psi_k\)</span> - the chance a best power is all-out, per kind: an easy ride is rarely all-out at any
 duration, a test often is, a maxed effort almost always. A race counts as a hard ride, not a test: its best
@@ -323,7 +324,14 @@ scale and shape: the data fix the mean, and scale and shape slid along a ridge (
 <li><p><strong>All-out</strong>: Gaussian in log power around the <em>fatigued</em> curve, sd 3 % (power meter + day to day). The sd is fixed:
 when fitted, it widens until the “all-out” part describes ordinary rides.</p></li>
 <li><p><strong>Not all-out</strong>: the log deficit below <em>capacity</em>, <span class="math notranslate nohighlight">\(-v\)</span>, is gamma distributed. Deficits are measured from capacity, not the
-fatigued curve, so an easy day after a hard one reads as a choice, not as fatigue. A best power <em>above</em> capacity can only be all-out.</p></li>
+fatigued curve, so an easy day after a hard one reads as a choice, not as fatigue. A best power <em>above</em> capacity can only be all-out - or a bad reading.</p></li>
+<li><p><strong>A bad reading</strong>: a small fixed share <span class="math notranslate nohighlight">\(\beta\)</span> of best powers are a broken power meter’s, spread evenly over
+<span class="math notranslate nohighlight">\(w\)</span> in log power. Without it a lone best far above the curve (minutes at 1000 W, heart rate barely above
+easy) sat some 40 sds over it, and the cheapest way to explain it was to lift the states for the whole history:
+on a synthetic rider one such ride put CP 86 % and MAP 119 % over the truth. With it, a lone best more than about
+12 % (easy ride) to 15 % (test) over the curve costs a fixed <span class="math notranslate nohighlight">\(-\log(\beta / w) \approx 10\)</span> and pulls no
+further, while several bests that agree still move the curve. Fixed: a fitted share would explain ordinary rides
+away. Rides whose power is known to be wrong are left out before the model sees them (<a class="reference internal" href="inputs.html"><span class="doc">Inputs</span></a>).</p></li>
 <li><p><span class="math notranslate nohighlight">\(\alpha \ge 2\)</span>: then the deficit density and its slope are both 0 at no deficit. With shape &lt; 1 the
 density is infinite there (the fit puts the curve through one ride); between 1 and 2 its gradient is infinite
 (NUTS can’t take a step).</p></li>
@@ -484,7 +492,7 @@ counts them as at most three pieces of evidence, a rough correction rather than 
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=0926e583"></script>
+</div><script src="../_static/documentation_options.js?v=11bb8181"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

@@ -30,6 +30,10 @@ export function expSmooth(arr, sigma) {
   return y;
 }
 export const boxSigma = (w) => Math.sqrt(Math.max(0, w * w - 1) / 12);   // the sigma that smooths like a w-sample box
+// the physio model's lines in the zone colour map (--z1 .. --z7), each where its intensity lands (planning.intensity:
+// LT1 = 0.75, CP = 1.0, MAP = 1.2 of CP): LT1 at the edge where tempo starts (zone 2's own colour is too faint for a
+// line, about 2:1), CP and FTP threshold, MAP the VO2max domain, W′ (work above CP) and Pmax the short hard efforts
+export const INTENSITY_COL = {lt1: "--z3", cp: "--z4", ftp: "--z4", map: "--z5", w_prime: "--z6", pmax: "--z7"};
 export function addDays(ds, n) {
   const d = new Date(ds + "T12:00:00"); d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

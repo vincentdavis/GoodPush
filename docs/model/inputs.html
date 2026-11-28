@@ -9,7 +9,7 @@
         <link rel="prefetch" href="../_static/logo-dark.svg" as="image">
 
     <link rel="shortcut icon" href="../_static/mark.svg"><!-- Generated with Sphinx 9.2.0 and Furo 2025.12.19 -->
-        <title>Inputs - GoodPush 0.3.0</title>
+        <title>Inputs - GoodPush 0.4.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">GoodPush 0.3.0</div></a>
+      <a href="../index.html"><div class="brand">GoodPush 0.4.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -307,6 +307,17 @@ rides’ highest heart rates in the year around it, as it drifts with age and fi
 was steady (at most 5 % of its seconds without power). These are the measurements of the curve; FTP, CP and W’ are
 inferred from it (<code class="docutils literal notranslate"><span class="pre">metrics.effort_hr.EffortHeartRate</span></code>).</p>
 <p>Most best powers are not all-out, so they are <em>censored</em> observations: they say capacity was at least this high.</p>
+<p><strong>Power that is wrong</strong> is set aside before the model sees it (<code class="docutils literal notranslate"><span class="pre">metrics.power_check.PowerCheck</span></code>):</p>
+<ul class="simple">
+<li><p>rides you mark (the Ride page’s “Power is wrong”, or goodpush.toml <code class="docutils literal notranslate"><span class="pre">[ingest]</span> <span class="pre">bad_power</span></code>: ride ids, days or date
+ranges - a meter that read high for weeks) count as rides without power: their time and heart rate stay, their
+load comes from heart rate, and they give no best powers, threshold watts or steady stretches;</p></li>
+<li><p>a ride whose best of 3 to 20 min is more than 1.2 x your rides’ 99th percentile at that length (the next-highest
+ride’s, so a glitch never sets its own bar) while heart rate around its end stayed under 0.95 x threshold heart
+rate loses its best powers - minutes far above your usual at an easy heart rate are a broken meter, not an
+effort. Its time in each power zone stays. <code class="docutils literal notranslate"><span class="pre">[ingest]</span> <span class="pre">keep_power</span></code> lists rides to leave alone.</p></li>
+</ul>
+<p>What gets past both is the likelihood’s bad-reading share (<a class="reference internal" href="likelihood.html"><span class="doc">Likelihood</span></a>).</p>
 </section>
 <section id="threshold-readings-observations-of-thresholds">
 <h2>Threshold readings (observations of thresholds)<a class="headerlink" href="#threshold-readings-observations-of-thresholds" title="Link to this heading">¶</a></h2>
@@ -428,7 +439,7 @@ CP.</p>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=0926e583"></script>
+</div><script src="../_static/documentation_options.js?v=11bb8181"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

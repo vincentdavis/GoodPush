@@ -32,6 +32,18 @@ inferred from it (``metrics.effort_hr.EffortHeartRate``).
 
 Most best powers are not all-out, so they are *censored* observations: they say capacity was at least this high.
 
+**Power that is wrong** is set aside before the model sees it (``metrics.power_check.PowerCheck``):
+
+* rides you mark (the Ride page's "Power is wrong", or goodpush.toml ``[ingest] bad_power``: ride ids, days or date
+  ranges - a meter that read high for weeks) count as rides without power: their time and heart rate stay, their
+  load comes from heart rate, and they give no best powers, threshold watts or steady stretches;
+* a ride whose best of 3 to 20 min is more than 1.2 x your rides' 99th percentile at that length (the next-highest
+  ride's, so a glitch never sets its own bar) while heart rate around its end stayed under 0.95 x threshold heart
+  rate loses its best powers - minutes far above your usual at an easy heart rate are a broken meter, not an
+  effort. Its time in each power zone stays. ``[ingest] keep_power`` lists rides to leave alone.
+
+What gets past both is the likelihood's bad-reading share (:doc:`likelihood`).
+
 Threshold readings (observations of thresholds)
 -----------------------------------------------
 

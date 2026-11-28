@@ -43,6 +43,11 @@ default_tss_per_hour = { ride = 45, run = 50, strength = 30, yoga = 10, other = 
 workers = 0             # parallel parser processes; 0 = auto (cpu count - 1)
 keep_streams = true     # keep 1 Hz streams (npz) for future analyses
 max_power = 2000        # watts; samples above are treated as spikes
+# rides whose power is wrong (a broken meter): ride ids, days "2017-05-03" or ranges "2017-06-01..2017-06-14";
+# they count as rides without power. The Ride page sets these too (metrics.power_check)
+bad_power = []
+# rides the heart-rate check leaves alone (a best far above your usual at an easy heart rate is set aside)
+keep_power = []
 
 [analysis]
 driver_window_weeks = 8   # training window preceding a performance change

@@ -6,8 +6,6 @@ follows and does not replace.
 GoodPush is a personal cycling training analysis app: Strava, Garmin and other sources in; power profile, training
 load, a physiological model and an adaptive plan out. It runs as a local web app in the browser, with a tray icon.
 
-This repository is a fork of `GoodPush/GoodPush` (the upstream). Its own rules are under "Rules for this fork" below.
-
 ## Layout
 
 | Path | What it is |
@@ -75,6 +73,8 @@ Rebuild the guide after changing `srcdocs/` or the physio model's docstrings, an
 uv run --extra docs python -m sphinx -b html -d build/doctrees srcdocs docs
 ```
 
+A Windows build writes backslashes in `docs/searchindex.js`'s file names: put forward slashes back.
+
 Build the installed app (PyInstaller; on macOS `dist/goodpush.app`). uv runs the tools; it doesn't make the
 app itself (`uv build` only makes the Python wheel / sdist):
 
@@ -82,8 +82,6 @@ app itself (`uv build` only makes the Python wheel / sdist):
 uv sync --extra build --extra dev        # PyInstaller + Pillow; name dev too or uv sync drops it
 cd packaging && uv run python make_icon.py && uv run python notices.py && uv run pyinstaller goodpush.spec --noconfirm
 ```
-
-Signing and notarizing on the Mac follow (`packaging/sign_mac.sh`, from the `mac-signing` branch until it merges).
 
 ## Conventions
 
@@ -129,22 +127,50 @@ The app's stylesheet is Tailwind CSS v4 with daisyUI 5. Details: `styles/README.
   Fitness, Plan and More).
 * No GitHub Actions builds: the compiled CSS is built locally and committed.
 
-## Rules for this fork
+## Scientific and backend code
 
-- **Don't build on GitHub.** GitHub Actions are turned off on this fork, so ignore `.github/workflows/build.yml`
-  (it is upstream's) and don't add or rely on workflows or CI checks. Releases are built, signed and notarized
-  locally on the maintainer's Mac.
-- **Never force-push**, to any branch.
-- **Upstream sync is a fast-forward** of `main` from `GoodPush/GoodPush` main. If it can't fast-forward (diverged
-  history, conflicts, uncommitted changes), stop and ask instead of merging, rebasing or forcing. Don't push
-  upstream's tags unless asked.
+The analysis, the physiological model and the planner. Read the module's docstrings and `srcdocs/model/` before
+changing one; the reasons for most choices are written there.
 
-## Planned modernization
+- **Rider-agnostic.** No one's numbers or facts in code, comments, tests or docs: rates, priors and thresholds are
+  the codebase's constants for every rider, and a rider's data only tests them. Tests use synthetic riders
+  (`goodpush.synth`) or made-up tables.
+- **Results are n = 1 and observational.** Show correlations as hypotheses, never as effects. Docs and the app's
+  text say what a number is and how sure it is.
+- **New analyses go in the package with a test**, not in one-off scripts. Experiments run on a copy of a
+  workspace, never on a real one (fits and checks write into `data/processed/`).
+- **Vectorise.** Prefix sums, `np.bincount` / `np.lexsort`, `scipy.signal.lfilter` instead of loops over samples,
+  rows or days. A loop that can't be avoided goes in a numba kernel. Profile before and after; results stay
+  identical. Smoothing uses the recursive exponential filter (Dave Hale's; `expSmooth` in `util.js`), not box or
+  median windows.
+- **Low memory, small batches.** No large one-shot batch operations (vmap over hundreds of draws, every ride's
+  streams at once): fixed small batches (`PhysioModel.batched`, `BATCH` constants). Long runs name each stage in
+  their log and report progress.
+- **Our own numba kernels for the heavy compute; JAX is the test reference.** The posterior's value and gradient
+  are `physio/numba_posterior.py` (a hand-written adjoint). A change to the model's parameters or likelihood
+  changes both, with a test matching numba to JAX.
+- **The physio model's version.** Bump `VERSION` in `physio/model.py` when the model changes what its parameters
+  mean. Stored fits of another version are refitted, and their daily states, and anything worked out from them,
+  are set aside (`PhysioRun.reset`), so a new version never builds on an old fit. A process running another
+  version than the code on disk never refits (`PhysioRun.same_code`). Rebuild `docs/` when the model changes.
+- **Don't start a full NUTS run** (`PhysioRun.FULL_RUN`, hours of every core): hand the command to the person.
+  Posterior-mode fits (`PhysioFit.map`, seconds) are fine. Don't run tests or benchmarks while a fit runs.
+- **Physiological parameters stay physiological** (see Conventions), and inputs stay measurements: threshold
+  heart rate, FTP entries and the like go in as data or estimates with their own error, never as tuning knobs.
+- **Data the model can't trust is set aside before it** (`metrics/power_check.py`), and the likelihood keeps a
+  small share for bad readings: a single impossible value must not move a whole fit.
+- **Files:** read and write text as UTF-8 explicitly (the installed app runs Python without UTF-8 mode). Replace
+  files whole (`PhysioRun.write_whole`): the app may read them while another process writes.
+- KISS / YAGNI: reuse established packages (scipy, tqdm, ...), and ask before adding a new public name or setting.
 
-Done in this order, one PR each, each starting after the previous one is merged:
+## Planned modernization of the app (front end and its server)
+
+For work on the app, not the analysis. One PR each, each starting after the previous one is merged:
 
 1. **Tailwind CSS v4 + daisyUI** restyle of the front end (done: see "Styles").
 2. **FastAPI** replacing the stdlib `http.server` backend in `app/server.py`, keeping the same URLs and JSON.
-3. **APScheduler** replacing the auto-sync loop and `Jobs` in `app/server.py`.
+
+Not decided: what replaces the auto-sync loop and `Jobs` in `app/server.py` (APScheduler was one idea). Don't
+start it without asking.
 
 Until each lands, work with the current code as described above.

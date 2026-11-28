@@ -41,7 +41,8 @@ Observations:
   sd ALL_OUT_SD, around the fatigued curve) or not (log deficit below the *capacity* curve ~ Gamma,
   one shape; its mean a straight line in log duration (log), plus a step per ride kind: easy / hard /
   test-race - by mean and shape, not scale and shape: those two slid along a ridge, correlation -0.94). Deficits are measured from capacity so an easy
-  day after a hard one reads as a choice, not as fatigue;
+  day after a hard one reads as a choice, not as fatigue. Either way a small fixed share (BAD_READING_SHARE) may
+  be bad readings, spread evenly in log power: one broken power meter's best no longer drags the curve to it;
 * threshold readings (your FTP entries, alpha1, ramp tests) with a fitted bias and error per source;
 * steady stretches (rides, >= 5-min reps): power at their heart rate. log power = log CP + g(HR / LTHR) + an offset
   for reps + c F + error: g is the rider's own heart-rate-to-power curve (HR_KNOTS, linear between), c how fatigue
@@ -72,7 +73,7 @@ from jax.scipy.stats import gamma, norm
 from .curve import PowerCurve
 
 STATES = ("map", "f_e", "f_t", "pmax", "durability")
-VERSION = 16        # bumped when a state's meaning or the parameters change (2: f_E = LT1 / 1-h power; 3: shared
+VERSION = 17        # bumped when a state's meaning or the parameters change (2: f_E = LT1 / 1-h power; 3: shared
 #                      noise, one deficit shape, f_E's z1 / z2 effect shared; 4: noise per state again; 5: the
 #                      heart-rate curve instead of HR readings scaled to threshold; 6: a reservoir rate per trained
 #                      state; 7: LT1 trained by endurance hours alone, the deficit by its mean, HR fatigue centred;
@@ -84,7 +85,8 @@ VERSION = 16        # bumped when a state's meaning or the parameters change (2:
 #                      weeks may change more (PhysioData.noise_scale), VO2 effects on MAP held near the studies; 13: a week's
 #                      unexplained change spread over its days; 14: LT1 share's detraining time constant prior narrower;
 #                      15: z3 = severe by heart rate where there is heart rate; 16: the LT1-MAP band split by power and
-#                      heart-rate evidence together, metrics.severe_hr): a stored fit is refitted
+#                      heart-rate evidence together, metrics.severe_hr; 17: a ride best may be a bad reading,
+#                      BAD_READING_SHARE): a stored fit is refitted
 # without a level of the rider's own (PhysioData.level_w): the start of MAP and Pmax (W) a trained rider's; and the
 # detrained floors as shares of the start, whoever the rider
 GENERIC_LEVEL_W = (290.0, 900.0)
@@ -142,6 +144,13 @@ HR_LOG_2PI = float(np.log(2.0 * np.pi))
 # all-out efforts scatter this much (log) around the curve: power meter + day-to-day. Fixed: when fitted
 # it widens until the "all-out" part of the mixture describes ordinary rides
 ALL_OUT_SD = 0.03
+# a ride best may be a bad reading (a broken power meter: 4:20 at 1000 W, heart rate 132): this fixed share of them
+# are, spread evenly over BAD_READING_WIDTH of log power. Without it one such best sat ~40 ALL_OUT_SDs above the curve
+# and lifted CP +86 %, MAP +119 % over a whole synthetic history (2026-11-26); with it a lone best more than ~12 %
+# (easy ride) to ~15 % (test) over the curve costs about -log(SHARE / WIDTH) ~ 10 and pulls no further, while
+# several that agree still move the curve. Fixed, not fitted (a fitted share would explain ordinary rides away)
+BAD_READING_SHARE = 1e-4
+BAD_READING_WIDTH = 2.0
 MIN_SHAPE = 2.0              # Gamma shape of the effort deficit (see effort_terms)
 # hard physical limits on the unconstrained states (MAP 40..1500 W, LT1/1-h 0.2..0.98, CP/MAP 0.4..0.98,
 # Pmax 100..3000 W, fade 0.005..1): keeps wild optimiser trial points finite; nothing real is near them
@@ -600,7 +609,9 @@ class PhysioModel:
         scale = jnp.exp(p["log_deficit"][0] + p["log_deficit"][1] * a["effort_x"] + jnp.r_[0.0, p["log_scale_kind"]][k]) / shape
         lg = gamma.logpdf(jnp.maximum(-u, 1e-9), shape, scale=scale)
         submax = jnp.where(u < 0, jax.nn.log_sigmoid(-p["logit_pi"])[k] + lg, -jnp.inf)
-        return jnp.where(a["effort_live"], a["effort_weight"] * jnp.logaddexp(all_out, submax), 0.0)
+        good = np.log1p(-BAD_READING_SHARE) + jnp.logaddexp(all_out, submax)
+        term = jnp.logaddexp(good, np.log(BAD_READING_SHARE / BAD_READING_WIDTH))   # or a bad reading
+        return jnp.where(a["effort_live"], a["effort_weight"] * term, 0.0)
 
     @staticmethod
     def quantities(x) -> jnp.ndarray:

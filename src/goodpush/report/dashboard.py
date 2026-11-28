@@ -209,12 +209,12 @@ TEMPLATE = """<!doctype html>
 <style>
 :root {{ color-scheme: light; --bg:#f6f6f4; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984;
   --grid:#e6e5e0; --line:#d6d5cf; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s7:#6250d6;
-  --good:#1f8a4c; --bad:#d03b3b; --z1:#cde2fb; --z2:#9ec5f4; --z3:#6da7ec; --z4:#3987e5; --z5:#256abf; --z6:#184f95; --z7:#0d366b; }}
+  --good:#2b7d74; --bad:#9a0b33; --z1:#cde2fb; --z2:#9ec5f4; --z3:#6da7ec; --z4:#3987e5; --z5:#256abf; --z6:#184f95; --z7:#0d366b; }}
 @media (prefers-color-scheme: dark) {{ :root:where(:not([data-theme="light"])) {{ color-scheme: dark; --bg:#121211; --surface:#1a1a19;
   --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --grid:#2c2c2a; --line:#3a3a37; --s1:#3987e5; --s2:#d95926; --s3:#199e70;
-  --s4:#c98500; --s7:#9085e9; --good:#3fb06d; --bad:#e66767; --z1:#104281; --z2:#184f95; --z3:#1c5cab; --z4:#256abf; --z5:#3987e5; --z6:#6da7ec; --z7:#b7d3f6; }} }}
+  --s4:#c98500; --s7:#9085e9; --good:#6fd6c0; --bad:#e8505f; --z1:#104281; --z2:#184f95; --z3:#1c5cab; --z4:#256abf; --z5:#3987e5; --z6:#6da7ec; --z7:#b7d3f6; }} }}
 :root[data-theme="dark"] {{ color-scheme: dark; --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86;
-  --grid:#2c2c2a; --line:#3a3a37; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s7:#9085e9; --good:#3fb06d; --bad:#e66767;
+  --grid:#2c2c2a; --line:#3a3a37; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s7:#9085e9; --good:#6fd6c0; --bad:#e8505f;
   --z1:#104281; --z2:#184f95; --z3:#1c5cab; --z4:#256abf; --z5:#3987e5; --z6:#6da7ec; --z7:#b7d3f6; }}
 * {{ box-sizing:border-box }}
 body {{ margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif }}

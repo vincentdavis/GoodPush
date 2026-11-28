@@ -71,16 +71,17 @@ class PowerHistory:
         z = np.asarray(self.fit["z"], float)
         return {b: z[block == b] for b in ("logit_pi", "log_shape_m2", "log_deficit", "log_scale_kind")}
 
-    def all_out(self, e: pd.DataFrame) -> np.ndarray | None:
-        """each effort's posterior probability of being all-out at the mode (None without a fit): all-out = N(0,
-        ALL_OUT_SD) in log power around the fatigued curve, else a Gamma log deficit below capacity, weighed by the
-        kind's prior share - as PhysioModel.effort_terms."""
+    def odds(self, e: pd.DataFrame) -> tuple[np.ndarray, np.ndarray] | None:
+        """each effort's posterior probability of being all-out, and of being a bad reading, at the mode (None
+        without a fit): all-out = N(0, ALL_OUT_SD) in log power around the fatigued curve, else a Gamma log deficit
+        below capacity, weighed by the kind's prior share; either way BAD_READING_SHARE of them bad readings, spread
+        evenly - as PhysioModel.effort_terms."""
         if not self.fit or not len(e):
             return None
         from scipy.special import log_expit
         from scipy.stats import gamma, norm
         from ..physio import PhysioModel, PowerCurve
-        from ..physio.model import ALL_OUT_SD, MIN_SHAPE
+        from ..physio.model import ALL_OUT_SD, BAD_READING_SHARE, BAD_READING_WIDTH, MIN_SHAPE
         p, st = self.mode(), self.states.iloc[e["day"].to_numpy(int)]
         k, t = e["kind"].to_numpy(int), e["s"].to_numpy(float)
         cap = np.asarray(PowerCurve.power(t, *(st[c].to_numpy(float) for c in ("cp", "w_prime", "pmax", "fade"))))
@@ -93,7 +94,10 @@ class PowerHistory:
         with np.errstate(divide="ignore"):
             below = np.where(u < 0, log_expit(-p["logit_pi"][k]) + gamma.logpdf(np.maximum(-u, 1e-9), shape, scale=scale),
                              -np.inf)
-        return np.exp(top - np.logaddexp(top, below))
+        good = np.log1p(-BAD_READING_SHARE) + np.logaddexp(top, below)
+        bad = np.log(BAD_READING_SHARE / BAD_READING_WIDTH)
+        total = np.logaddexp(good, bad)
+        return np.exp(np.log1p(-BAD_READING_SHARE) + top - total), np.exp(bad - total)
 
     def build(self) -> dict:
         s = self.states
@@ -104,7 +108,7 @@ class PowerHistory:
         n, m = len(s), 0 if fut is None else fut.shape[1]
         dates = s.index.append(pd.DatetimeIndex(self.forecast.index)) if m else s.index
         e = self.efforts()
-        p = self.all_out(e)
+        p, bad = self.odds(e) or (None, None)
         num = lambda a: [None if not np.isfinite(v) else round(float(v), 1) for v in np.asarray(a, float)]  # noqa: E731
         observed = []
         for d in self.DURATIONS:                   # sparse: the days with an effort that long
@@ -112,7 +116,8 @@ class PowerHistory:
             observed.append({"i": e["day"].to_numpy(int)[at].tolist(), "w": num(e["w"][at]),
                              "id": [None if pd.isna(v) else str(v) for v in e["id"][at]],
                              "kind": [KINDS[k] for k in e["kind"].to_numpy(int)[at]],
-                             "all_out": num(p[at] * 100) if p is not None else None})   # %
+                             "all_out": num(p[at] * 100) if p is not None else None,    # %
+                             "bad": num(bad[at] * 100) if bad is not None else None})   # %: a bad reading
         return {"date": [str(x.date()) for x in dates], "today": str(s.index[-1].date()), "s": list(self.DURATIONS),
                 "all_out_sd": ALL_OUT_SD,
                 "predicted": [num(np.r_[row, np.full(m, np.nan)]) for row in pred],

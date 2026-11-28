@@ -4,7 +4,7 @@ import {Page} from "./page.js";
 import {jobs, S} from "../api.js";
 import {esc, fmt, LOCAL} from "../util.js";
 import {niceDate} from "../widgets.js";
-import {morningLabel, syncStatus, whenLabel, wellnessAge, cloudIcon} from "../status_bar.js";
+import {morningLabel, syncStatus, whenLabel, wellnessAge, syncIcon} from "../status_bar.js";
 
 const STATE = {ok: "Up to date", warn: "Behind", bad: "Problem", off: "Not connected", run: "Updating"};
 
@@ -39,7 +39,7 @@ class SyncPage extends Page {
     const last = ls.at ? `Last check ${esc(whenLabel(ls.at))}: ${fmt(ls.days || 0)} day${ls.days === 1 ? "" : "s"} and ${fmt(ls.activities || 0)} ride${ls.activities === 1 ? "" : "s"} updated${ls.calls ? ` (${ls.calls} requests)` : ""}.` : "";
     return `<h1>Sync</h1>
     <p class="sub">What goodpush has brought in from Garmin and the others, and what it sends out. Everything stays on this computer.</p>
-    <div class="card syncsum"><div class="row"><span class="syncicon big s-${lv}">${cloudIcon(lv)}</span>
+    <div class="card syncsum"><div class="row"><span class="syncicon big s-${lv}">${syncIcon(lv)}</span>
       <div class="grow"><b>${esc(syncStatus.tip(lv))}</b><div class="small muted">${syncStatus.note()}${last ? `<br>${last}` : ""}</div></div>
       ${G.configured ? `<button class="btn primary" data-act="garmin_sync"${lv === "run" ? " disabled" : ""}>Update now</button>` : '<a class="btn primary" href="#settings/keys">Connect Garmin</a>'}
       ${syncStatus.peers().length && LOCAL ? '<button class="btn" data-act="peer_sync_all">Sync other computer</button>' : ""}</div></div>

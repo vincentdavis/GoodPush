@@ -14,7 +14,7 @@ this morning's numbers and the next session.
 **‹ ›** beside the date (or the ← → keys, or a swipe on a phone) step to the days before and after: what you rode
 and that morning's numbers, or what's planned.
 
-**At the top right**, the cloud icon shows whether your data is up to date (green), behind (amber), had a problem (red)
+**At the top right**, the sync icon (two arrows) shows whether your data is up to date (green), behind (amber), had a problem (red)
 or isn't connected yet (grey). Hover it for a summary; click it for each kind of data, **Update now** and **All sync
 details**, the Sync page with the last update's log. **Setup 2/4** (until you've done them) lists what's left to set
 up: connecting Garmin, bringing in your whole history, the model's full run and a ride app. **Later** and **Don't
@@ -83,7 +83,7 @@ Illnesses come from words like "sick", "flu", "covid" or "cough" in your ride de
 
 Your connections (Garmin, Fitbit, Incyclist, your other computers), the plan's settings, your athlete details,
 FTP, the model and the trainer, in sections you open and close (each shows its status while closed; **Expand all**
-opens them all). Under **Data**: **Rebuild everything** (after importing an export) and **Fit the model
+opens them all). Under **Data and model**: **Rebuild everything** (after importing an export) and **Fit the model
 from scratch** (`goodpush physio --fresh`: from the model's priors instead of the last fit, after a model update or
 when its numbers look implausible; its 5-95 % ranges come back with the next full run on the Model page). Everything
 is saved in `goodpush.toml` in your GoodPush folder.

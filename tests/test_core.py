@@ -149,7 +149,10 @@ def test_end_to_end(tmp_path: Path):
     from goodpush.models.dips import BreakLabels
     BreakLabels(proj.processed).set_period("2024-02-07", "2024-04-01", "gain")     # marked on the load chart
     BreakLabels(proj.processed).set_period("2024-05-01", "2024-05-06", "illness")
-    r = run_analysis(proj, progress=lambda *a: None)
+    said = []
+    r = run_analysis(proj, progress=said.append)
+    from goodpush.models.physio import PhysioRun
+    assert PhysioRun(proj).analysed() and any("first fit" in str(s) for s in said)   # analysed on its own states
     res = write_reports(proj, r, progress=lambda *a: None)
     assert (proj.reports / "dashboard.html").exists()
     assert 200 < res["power"]["ftp_now"] < 300

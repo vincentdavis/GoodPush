@@ -577,7 +577,7 @@ def save_upload(proj, rfile, length: int, name: str) -> tuple[Path, str]:
 ACT_FIELDS = ["id", "name", "type", "sport", "indoor", "workout", "type_name", "duration_s", "moving_s",
               "distance_m", "elev_gain", "np_used", "avg_power", "max_power", "if_", "tss", "tss_source",
               "avg_hr", "max_hr", "work_kj", "ef", "decoupling", "avg_cadence", "ftp", "gear",
-              "description", "private_note", "avg_temp", "calories", "also"]
+              "description", "private_note", "avg_temp", "calories", "also", "power_ignored"]
 
 
 def _jsonable(v):
@@ -2129,6 +2129,20 @@ def make_handler(proj, key: str | None, lan: bool, warm: bool = True, port: int 
             if a == "override" and body.get("value") == "sick":            # an illness: learn from it too
                 return jobs.start("Updating plan", lambda log: _sick_day(proj, log), queue=True)
             return jobs.start("Updating plan", lambda log: _plan_only(proj, log), queue=True)
+        if a == "ride_power":                 # Ride page: this ride's power is wrong / keep it / undo (metrics.power_check)
+            from ..metrics.power_check import PowerCheck
+            from .tomledit import set_values
+            ride = str(body.get("ride") or "").removesuffix(".0")
+            if not ride:
+                raise ValueError("no ride given")
+            ing = proj.cfg.get("ingest", {})
+            bad, keep = PowerCheck.edited(list(ing.get("bad_power") or []), list(ing.get("keep_power") or []),
+                                          ride, str(body.get("value") or ""))
+            set_values(proj.root / "goodpush.toml", "ingest", {"bad_power": bad, "keep_power": keep})
+            proj = load_project(proj.root)
+            data.proj = proj
+            return jobs.start("Re-analysing without that ride's power" if body.get("value") == "bad"
+                              else "Re-analysing with that ride's power", lambda log: _reanalyse(proj, log))
         if a == "settings":                   # any section of SETTINGS (config.py); the Plan page sends plan
             section = body.get("section") or "plan"
             vals = clean_settings(section, body.get("values") or {})

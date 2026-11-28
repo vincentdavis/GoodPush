@@ -88,24 +88,27 @@ keeps polling and reloads the model when the run ends.
 
 ![After: a run started from a terminal](img/after-run-elsewhere.jpg)
 
-## Other findings, not changed here
+## Second pass (after upstream 0.4.1)
 
-| Finding | Severity | Suggestion |
+Most of the other findings were fixed in a second pass:
+
+| Finding | Severity | Done |
 |---|---|---|
-| Phone: the riding table and the threshold table are cut off on the right ("59 % of t…", "±3.6"), with no sign that they scroll | Moderate | Stack each riding kind as a card on narrow screens, or fade the right edge |
-| Fatigue y axis (0–4) has no unit | Minor | Label it (the hint says recent hours at CP) |
-| Red is used for "training explains part of the change" and "no sampling run yet" | Minor | Keep red for real problems; neutral or amber for partial / not run |
-| 25 💡 hints after a sampling run, several in every heading | Minor | Turn the hints that hold the main idea into a one-line caption |
-| "What each kind of riding did for you" is a blue disclosure styled unlike every other section, yet open by default | Minor | An ordinary sub-heading, or closed by default |
-| The sections mix "can I trust it?" (status, predicted vs observed, threshold readings) with "what it says about you" (today, fatigue, training) | Minor | Group them under those two headings |
-| Range bars use a different hue per row (W′ lavender, Pmax grey) with no meaning | Minor | One neutral hue |
-| Mixed date formats: "Nov 26", "2026-11-27 17:00" (sampler details) | Minor | One format, local time |
-| The three main charts are SVGs with no `role="img"` / `aria-label` | Moderate (a11y) | A one-sentence summary each |
-| Hard ride, Test and Heart rate maxed are told apart by colour only | Minor (a11y) | A marker shape each |
-| Segmented buttons are 40 px tall | Minor (a11y) | 44 px on phones |
+| Phone: the riding table and the threshold table were cut off on the right, with no sign that they scroll | Moderate | Both become one card per row on a phone (`table.stacktable`; `.kv` puts short values beside their names) |
+| Fatigue y axis (0–4) had no unit | Minor | Titled "Recent hours at CP" |
+| Red was used for "training explains part of the change" | Minor | Amber for part or "too small", red only when training explains little (under 20 %) |
+| "What each kind of riding did for you" was a blue disclosure styled unlike every other section, yet open by default | Minor | An ordinary sub-heading under "What training explains" |
+| The sections mixed "can I trust it?" with "what it says about you" | Minor | Two groups under the verdict: *What the model says about you* (today's ranges, fatigue, training), then *How far to trust it* (status, sampler, predicted vs observed, readings) |
+| Mixed date formats ("2026-11-27 17:00" in sampler details) | Minor | "Sampling run of Nov 27, 17:00" |
+| The three main charts had no text alternative | Moderate (a11y) | `EChart.draw(..., {label})` sets `role="img"` and an `aria-label` with a one-sentence summary (now, highest, how many efforts sit above the prediction) |
+| Hard ride, Test and Heart rate maxed were told apart by colour only | Minor (a11y) | Circle, diamond and triangle markers, with the same shapes in the legend |
+| Segmented buttons were 40 px tall | Minor (a11y) | 44 px on phones |
+| Range bars used a different hue per row | Minor | Upstream's zone colour map (0.4.1) now colours them by intensity |
 
-Contrast passes AA in both themes. Every text node was checked against its background on the rendered page. The 💡
-hints show the focus ring.
+![Phone: the readings table, one card per row](img/after-phone-readings.jpg)
+
+Still open: the 💡 hints (25 after a sampling run) could become one-line captions where they hold a section's main
+idea. That's a copy change best made with the guide's author.
 
 ## What works well
 

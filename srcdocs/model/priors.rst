@@ -18,7 +18,7 @@ States
      - 90 % range
      - Detrained floor, median (90 %)
    * - MAP
-     - your first year's best 5-min power (290 W without one)
+     - the median of your first year's 8-week best 5-min powers (290 W without)
      - x 0.61 - 1.64
      - 0.86 x the start (x 0.72 - 1.39)
    * - LT1 / 1-h power
@@ -30,7 +30,7 @@ States
      - 0.68 - 0.85
      - 0.72 (0.61 - 0.81)
    * - Pmax
-     - the 98th percentile of your first year's 5-s bests (900 W without)
+     - the median of your first year's 8-week best 5-s powers (900 W without)
      - x 0.52 - 1.93
      - 0.89 x the start (x 0.61 - 1.64)
    * - fade (:math:`1/\delta`, :doc:`overview`)
@@ -39,8 +39,11 @@ States
      - 0.12 (0.062 - 0.23)
 
 MAP and Pmax are centred on the rider's own first year of rides (at least 10 with efforts, else the generic
-watts): in fixed watts the priors sat two to three standard deviations from a much weaker or stronger rider. A
-year's best 5 minutes is about all-out for most riders, and the ranges stay as wide as before.
+watts): in fixed watts the priors sat two to three standard deviations from a much weaker or stronger rider.
+Each block of 8 weeks gives its best 5 minutes and 5 seconds, and the centre is their median: most 8-week blocks
+hold a near all-out effort, and a block a broken power meter set moves no median (the year's best did: one
+minutes-long 1000 W reading put a synthetic rider's MAP centre at 3.3 x the truth). The ranges stay as wide as
+before.
 
 The floors are what the states decay toward without training; for Pmax and durability (no detraining) they
 are prior only. The CP / MAP prior is the narrow one on purpose: with a wider one (0.57 - 0.89) the fit can explain
@@ -234,6 +237,8 @@ Fixed, not fitted
 Some quantities are constants because fitting them breaks the fit (each was tried):
 
 * the all-out scatter, 3 % (fitted, it widens until "all-out" describes ordinary rides);
+* the share of best powers that are bad readings, :math:`10^{-4}`, spread over 2 in log power (fitted, it would
+  explain ordinary rides away);
 * the process-noise size per state (fitted, the mode runs to large noise that matches every reading);
 * the minimum deficit shape, 2 (below it the likelihood has infinite density or gradient at the curve);
 * the soft domain-edge width, 5 % in log power;

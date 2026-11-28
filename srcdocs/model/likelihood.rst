@@ -22,13 +22,14 @@ against the fatigued curve :math:`C\,e^{-s_F F_t}` (fatigue :math:`F_t` and its 
 
 .. math::
 
-   p(y) = \psi_k\; \mathcal N\!\left(v_F;\ 0,\ 0.03\right)
+   p(y) = (1 - \beta)\left[\psi_k\; \mathcal N\!\left(v_F;\ 0,\ 0.03\right)
         \;+\; (1 - \psi_k)\; \mathbb 1[v < 0]\;
-        \mathrm{Gamma}\!\left(-v;\ \alpha,\ \mu_\Delta\, e^{\kappa_k} / \alpha\right)
+        \mathrm{Gamma}\!\left(-v;\ \alpha,\ \mu_\Delta\, e^{\kappa_k} / \alpha\right)\right] \;+\; \beta / w
 
 where :math:`p(y)` is the likelihood of the best power, :math:`\mathcal N(v; 0, 0.03)` the normal density with
 mean 0 and standard deviation 0.03 at :math:`v`, :math:`\mathrm{Gamma}(v; \alpha, \theta)` the gamma density with
-shape :math:`\alpha` and scale :math:`\theta`, and :math:`\mathbb 1[v < 0]` is 1 below capacity, else 0. Fitted:
+shape :math:`\alpha` and scale :math:`\theta`, :math:`\mathbb 1[v < 0]` is 1 below capacity, else 0, and
+:math:`\beta = 10^{-4}`, :math:`w = 2` the bad-reading share and width (below). Fitted:
 
 * :math:`\psi_k` - the chance a best power is all-out, per kind: an easy ride is rarely all-out at any
   duration, a test often is, a maxed effort almost always. A race counts as a hard ride, not a test: its best
@@ -47,7 +48,14 @@ What the two parts mean:
 * **All-out**: Gaussian in log power around the *fatigued* curve, sd 3 % (power meter + day to day). The sd is fixed:
   when fitted, it widens until the "all-out" part describes ordinary rides.
 * **Not all-out**: the log deficit below *capacity*, :math:`-v`, is gamma distributed. Deficits are measured from capacity, not the
-  fatigued curve, so an easy day after a hard one reads as a choice, not as fatigue. A best power *above* capacity can only be all-out.
+  fatigued curve, so an easy day after a hard one reads as a choice, not as fatigue. A best power *above* capacity can only be all-out - or a bad reading.
+* **A bad reading**: a small fixed share :math:`\beta` of best powers are a broken power meter's, spread evenly over
+  :math:`w` in log power. Without it a lone best far above the curve (minutes at 1000 W, heart rate barely above
+  easy) sat some 40 sds over it, and the cheapest way to explain it was to lift the states for the whole history:
+  on a synthetic rider one such ride put CP 86 % and MAP 119 % over the truth. With it, a lone best more than about
+  12 % (easy ride) to 15 % (test) over the curve costs a fixed :math:`-\log(\beta / w) \approx 10` and pulls no
+  further, while several bests that agree still move the curve. Fixed: a fitted share would explain ordinary rides
+  away. Rides whose power is known to be wrong are left out before the model sees them (:doc:`inputs`).
 * :math:`\alpha \ge 2`: then the deficit density and its slope are both 0 at no deficit. With shape < 1 the
   density is infinite there (the fit puts the curve through one ride); between 1 and 2 its gradient is infinite
   (NUTS can't take a step).

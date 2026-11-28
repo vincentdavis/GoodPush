@@ -563,6 +563,11 @@ def cmd_physio(args):
     kind = ("physio-backtest" if args.backtest else "physio-coverage" if args.coverage else "physio-refresh"
             if args.refresh else "physio-nuts" if args.nuts else "physio")
     with Tee.into(proj.logs / f"{kind}_{time.strftime('%Y-%m-%d_%H%M')}.log"):
+        if not run.analysed():                             # a new model version (or no fit yet): its inputs from
+            from .analyze import run_analysis              # its own states first, never the old fit's (reset)
+            run.same_code()
+            print("The analysis isn't made from this model's own daily states yet: analysing first ...")
+            run_analysis(proj, progress=Progress.terminal())
         if args.backtest or args.coverage:
             run.check(args.coverage, args.folds, args.every)
             return

@@ -30,7 +30,7 @@ DEFAULTS = {
     "load": {"ctl_days": 42, "atl_days": 7, "include_sports": "all",
              "default_tss_per_hour": {"ride": 45, "run": 50, "strength": 30,
                                       "yoga": 10, "other": 30}},
-    "ingest": {"workers": 0, "keep_streams": True, "max_power": 2000},
+    "ingest": {"workers": 0, "keep_streams": True, "max_power": 2000, "bad_power": [], "keep_power": []},
     "analysis": {"driver_window_weeks": 8, "progress_min_gain": 0.04},
     "plan": {"enabled": False, "hours_per_week": 4.0, "plan_starting_hours": 0.0, "availability": [], "rest_days": ["mon"],
              "key_days": ["tue", "thu"], "long_day": "sat", "recovery_days": ["fri"],
@@ -50,7 +50,7 @@ EVENT_TYPES = ("illness", "injury", "race", "travel", "life", "note")
 
 def setting(key: str, kind: str, label: str, help: str = "", **opts) -> dict:
     """One option of goodpush.toml for the Settings page. kind: text | path | tz | int | float | bool | choice |
-    day | days | week | numbers | history | events; opts: lo / hi / step (numbers), choices [(value, label)],
+    day | days | week | numbers | history | events | lines (one entry a line, a list); opts: lo / hi / step (numbers), choices [(value, label)],
     count (days: exactly this many), keys (numbers: the dict's keys), zero (0 = automatic, besides lo..hi)."""
     return {"key": key, "kind": kind, "label": label, "help": help, **opts}
 
@@ -166,10 +166,15 @@ SETTINGS = {
         setting("every_hours", "float", "Sync with the computer this one joined every (hours)", "this computer "
                 "only; 0 = only when you press Sync (and after a ride)", lo=0, hi=48, step=0.5),
     ]},
-    "ingest": {"title": "Importing", "then": "nothing", "fields": [
+    "ingest": {"title": "Importing", "then": "reanalyse", "fields": [
         setting("workers", "int", "Parallel readers", "0 = automatic (CPU count - 1)", lo=0, hi=64),
         setting("keep_streams", "bool", "Keep 1-s streams", "needed for the ride charts and interval detection"),
         setting("max_power", "int", "Max power (W)", "samples above are spikes and dropped", lo=500, hi=4000),
+        setting("bad_power", "lines", "Power is wrong on", "a broken power meter: one a line - a ride id, a day "
+                "(2017-05-03) or days (2017-06-01..2017-06-14); those rides count as rides without power. The Ride "
+                "page's 'Power is wrong' adds a ride here"),
+        setting("keep_power", "lines", "Power is right on", "ride ids whose best powers stay although heart rate "
+                "says they're too high for it (the Ride page's 'They're real' adds a ride here)"),
     ]},
     "analysis": {"title": "Analysis", "then": "reanalyse", "fields": [
         setting("driver_window_weeks", "int", "Driver window (weeks)", "the training before a change in form",
@@ -337,6 +342,8 @@ def clean_setting(f: dict, v):
     if kind == "numbers":
         return {k: clean_setting({"kind": "float", "label": f"{label} ({k})", "lo": f["lo"], "hi": f["hi"]},
                                  (v or {}).get(k, 0)) for k in f["keys"]}
+    if kind == "lines":
+        return setting_lines(v if isinstance(v, str) else "\n".join(map(str, v or [])))
     if kind == "history":
         return dict(sorted(parse_setting_line(line, 2, label, "date watts") for line in setting_lines(v)))
     if kind == "events":

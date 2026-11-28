@@ -3,7 +3,7 @@
 import {Lazy, Pref, Segmented} from "../controls.js";
 import {Page} from "./page.js";
 import {S} from "../api.js";
-import {$, css, esc, fmt} from "../util.js";
+import {$, css, esc, fmt, INTENSITY_COL} from "../util.js";
 import {hint, niceDate, tile} from "../widgets.js";
 import {router} from "../main.js";
 import {ZOOM_HELP} from "./fitness.js";
@@ -33,7 +33,9 @@ const LT1_TIP = "First (aerobic) threshold: below it you can ride for hours; eas
 const CP_TIP = "Critical power: the most you can hold without tiring quickly, about LT2.\n• Above it you use up W′, a limited store\n• FTP (~1-hour power) sets plan targets and each ride's TSS\n• From the physiology model, else your best 3-20 min of 90 days (a floor unless all-out)";
 const BEST_TIP = "Your best efforts.\n• ✓ verified: heart rate shows it was all-out (near your max at its end, steady effort), last 12 months\n• No tick: best of 90 days, maybe not all-out\n• The plan adds a timed max effort now and then to keep them current";
 const BEST_S = [[15, "15 s"], [60, "1 min"], [300, "5 min"], [1200, "20 min"]];
-const POWER_S = [[3600, "1 h"], [1200, "20 min"], [300, "5 min"], [60, "1 min"]];   // models.power_history.PowerHistory.DURATIONS, long to short
+// the model's capacity lines, low to high, in their zone colours (INTENSITY_COL): the chart and its legend
+const PHYSIO_LINES = [["lt1", "LT1"], ["cp", "CP"], ["map", "MAP (5 min)"]].map(([k, n]) => [k, INTENSITY_COL[k], n]);
+const POWER_S = [[3600, "1 h"],[1200, "20 min"], [300, "5 min"], [60, "1 min"]];   // models.power_history.PowerHistory.DURATIONS, long to short
 const POWER_TIP = "• Predicted (line): the most the model says you could hold this long, fresh\n• Observed (points): your best that day; most rides aren't all-out, so they sit below\n• Filled: a test or heart rate shows it was all-out\n• Clearly above the line: the model is too low\n• Dashed: the forecast, if you ride the plan\n• Click a point for its ride\n";
 const CONFIRMED = ["test", "maxed"];       // effort kinds (physio KINDS) known to be all-out
 const KIND_WORDS = {easy: "an easy ride", hard: "a hard workout or race", test: "a test", maxed: "all-out: heart rate reached your maximum"};
@@ -149,7 +151,9 @@ class RiderPage extends Page {
       const rows = on.map(([s, j]) => {
         const O = P.observed[j], q = pts[j].effort.get(d), pred = P.predicted[j][d];
         if (q == null || !pred) return "";
-        const odds = O.all_out && !CONFIRMED.includes(O.kind[q]) ? ` · ${fmt(O.all_out[q])} % likely all-out` : "";
+        const bad = O.bad && O.bad[q] >= 50;     // the model's odds it was a broken power meter's reading
+        const odds = bad ? " · probably a bad reading: the model sets it aside"
+          : O.all_out && !CONFIRMED.includes(O.kind[q]) ? ` · ${fmt(O.all_out[q])} % likely all-out` : "";
         return `<div class="small">${this.powerName(s)}: ${fmt(100 * O.w[q] / pred)} % of predicted · ${esc(KIND_WORDS[O.kind[q]] || O.kind[q])}${odds}</div>`;
       }).join("");
       return rows ? rows + '<div class="small muted">click for the ride</div>' : "";
@@ -260,7 +264,7 @@ class RiderPage extends Page {
   ${S.physio ? `<h2>Physiology (model)<a class="small" href="#model" style="margin-left:10px;font-weight:400">How sure is the model? →</a>${hint("A model of your body, fitted to all your rides, tests and readings: what you could do fresh and all-out each day.\n• MAP: about your best 5 minutes\n• CP: the most you can hold without tiring quickly\n• LT1: the top of easy riding\n• Band: the 5-95 % range · dashed: if you ride the plan\n" + ZOOM_HELP)}</h2>
   <div class="card">
     ${S.physio.cp_p05 ? this.rangesAge() : ""}
-    <div class="row"><div class="legend"><span><i style="background:var(--s3)"></i>LT1</span><span><i style="background:var(--s1)"></i>CP</span><span><i style="background:var(--s2)"></i>MAP (5 min)</span>${S.physio.cp_p05 ? '<span><i class="band" style="background:var(--s1)"></i>5–95 % range</span>' : ""}<span><i class="dash" style="border-color:var(--muted)"></i>If you ride the plan</span></div><span class="spacer"></span>
+    <div class="row"><div class="legend">${PHYSIO_LINES.map(([, c, n]) => `<span><i style="background:var(${c})"></i>${n}</span>`).join("")}${S.physio.cp_p05 ? `<span><i class="band" style="background:var(${INTENSITY_COL.cp})"></i>5–95 % range</span>` : ""}<span><i class="dash" style="border-color:var(--muted)"></i>If you ride the plan</span></div><span class="spacer"></span>
     <div class="seg" id="phyrange"><button data-d="90">3 m</button><button data-d="365" class="on">1 y</button><button data-d="0">All</button></div></div>
     <div id="phycap" class="chart"></div>
   </div>` : ""}
@@ -328,7 +332,7 @@ class RiderPage extends Page {
     const ahead = (k) => d.map((_, i) => (i === d.length - 1 ? P[k][i] : null)).concat(fut.map(([, i]) => F[k][i]));
     const ms = (q) => new Date(q + "T12:00:00").getTime(), W = (v) => fmt(v) + " W";
     TimeWindow.of("physio").showLast(days, ms(last), ms(x[x.length - 1]), 365);
-    const vline = fut.length ? ms(last) : null, lines = [["lt1", "--s3", "LT1"], ["cp", "--s1", "CP"], ["map", "--s2", "MAP (5 min)"]];   // low to high
+    const vline = fut.length ? ms(last) : null, lines = PHYSIO_LINES;
     const series = [];
     lines.forEach(([k, c]) => { if (P[k + "_p05"]) series.push({kind: "band", y: pad(P[k + "_p05"]), y2: pad(P[k + "_p95"]), color: css(c)}); });
     lines.forEach(([k, c, n]) => series.push({kind: "line", y: pad(P[k]), color: css(c), name: n, fmt: W},

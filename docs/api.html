@@ -9,7 +9,7 @@
         <link rel="prefetch" href="_static/logo-dark.svg" as="image">
 
     <link rel="shortcut icon" href="_static/mark.svg"><!-- Generated with Sphinx 9.2.0 and Furo 2025.12.19 -->
-        <title>API - GoodPush 0.3.0</title>
+        <title>API - GoodPush 0.4.1</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">GoodPush 0.3.0</div></a>
+      <a href="index.html"><div class="brand">GoodPush 0.4.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -324,7 +324,8 @@ as well, but LT1 and CP/MAP could then only move in step with MAP - the fit ran 
 sd ALL_OUT_SD, around the fatigued curve) or not (log deficit below the <em>capacity</em> curve ~ Gamma,
 one shape; its mean a straight line in log duration (log), plus a step per ride kind: easy / hard /
 test-race - by mean and shape, not scale and shape: those two slid along a ridge, correlation -0.94). Deficits are measured from capacity so an easy
-day after a hard one reads as a choice, not as fatigue;</p></li>
+day after a hard one reads as a choice, not as fatigue. Either way a small fixed share (BAD_READING_SHARE) may
+be bad readings, spread evenly in log power: one broken power meter’s best no longer drags the curve to it;</p></li>
 <li><p>threshold readings (your FTP entries, alpha1, ramp tests) with a fitted bias and error per source;</p></li>
 <li><p>steady stretches (rides, &gt;= 5-min reps): power at their heart rate. log power = log CP + g(HR / LTHR) + an offset
 for reps + c F + error: g is the rider’s own heart-rate-to-power curve (HR_KNOTS, linear between), c how fatigue
@@ -2665,16 +2666,18 @@ else 1.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="goodpush.models.physio.PhysioInputs.LEVEL_SPRINT_PCT">
-<span class="sig-name descname"><span class="pre">LEVEL_SPRINT_PCT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">98</span></span><a class="headerlink" href="#goodpush.models.physio.PhysioInputs.LEVEL_SPRINT_PCT" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioInputs.LEVEL_BLOCK_DAYS">
+<span class="sig-name descname"><span class="pre">LEVEL_BLOCK_DAYS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">56</span></span><a class="headerlink" href="#goodpush.models.physio.PhysioInputs.LEVEL_BLOCK_DAYS" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="goodpush.models.physio.PhysioInputs.own_level">
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">own_level</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">effort_day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effort_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effort_w</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioInputs.own_level"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioInputs.own_level" title="Link to this definition">¶</a></dt>
-<dd><p>about where this rider’s MAP and Pmax start (W), for the priors’ centre: the best 5-min power and the
-LEVEL_SPRINT_PCT percentile of the 5-s bests in the first LEVEL_DAYS with efforts (a year’s best 5 min is
-about all-out for most riders; the priors stay wide around it). None with under LEVEL_MIN_RIDES of either.</p>
+<dd><p>about where this rider’s MAP and Pmax start (W), for the priors’ centre: the median over the first
+LEVEL_DAYS with efforts of each LEVEL_BLOCK_DAYS block’s best 5-min and 5-s power (most 8-week blocks hold
+a near all-out effort; the median ignores a block a broken power meter set - 2026-11-26: the year’s best
+5 min was one 1000 W glitch and put the MAP prior at 3.3 x the truth). The priors stay wide around it.
+None with under LEVEL_MIN_RIDES of either.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -2733,6 +2736,20 @@ fitness or fatigue (2026-11-09: a fixed LTHR let the heart-rate fatigue term pic
 <li><p><strong>intervals</strong> (<em>DataFrame</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>max_hr</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioInputs.set_aside">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">set_aside</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rides</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioInputs.set_aside"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioInputs.set_aside" title="Link to this definition">¶</a></dt>
+<dd><p>the ids of rides whose power is set aside (metrics.power_check: marked wrong, or heart rate said so).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rides</strong> (<em>DataFrame</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Series</em></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2968,15 +2985,76 @@ only) and processed/physio_states.parquet (daily capacities; with draws also the
 <span class="sig-name descname"><span class="pre">FULL_RUN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'goodpush</span> <span class="pre">physio</span> <span class="pre">--nuts</span> <span class="pre">--samples</span> <span class="pre">2500</span> <span class="pre">--ess</span> <span class="pre">400</span> <span class="pre">--max-minutes</span> <span class="pre">540'</span></span><a class="headerlink" href="#goodpush.models.physio.PhysioRun.FULL_RUN" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.ANALYSED">
+<span class="sig-name descname"><span class="pre">ANALYSED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'physio_analysed.txt'</span></span><a class="headerlink" href="#goodpush.models.physio.PhysioRun.ANALYSED" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.keep_compiled">
 <span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">keep_compiled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioRun.keep_compiled"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioRun.keep_compiled" title="Link to this definition">¶</a></dt>
 <dd><p>JAX keeps its compiled code in <cite>path</cite>, so a new app or CLI process loads it instead of compiling
 again. Specific to this machine and jax version (jax keys it by both), so never in git. A cache folder you set
 yourself (JAX_COMPILATION_CACHE_DIR; the tests share one across runs) wins.</p>
+<p>One subfolder per compression (<cite>cache_codec</cite>): jax names an entry the same whether it was compressed with
+Python 3.14’s zstd or with zlib, so the installed app (Python 3.12) and a checkout (3.14) sharing one folder
+read each other’s entries with the wrong one (“Unable to decompress Zstandard data”). Entries from before the
+subfolders, a mix of both, are removed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.cache_codec">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cache_codec</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioRun.cache_codec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioRun.cache_codec" title="Link to this definition">¶</a></dt>
+<dd><p>What jax compresses its cache entries with, in its own order: Python 3.14’s compression.zstd, else the
+zstandard package, else zlib.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">print</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioRun.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioRun.reset" title="Link to this definition">¶</a></dt>
+<dd><p>True when there are no daily states of this model to build inputs from (no fit of this version yet).
+Another version’s states - and the rides’ heart-rate splits made with them (SevereSplit, kept per ride) -
+are deleted first: nothing of another model’s fit gets into this one’s inputs (2026-11-27: a broken fit’s
+states would have fed the next version’s). A process on an older VERSION than the code on disk touches
+nothing (<cite>same_code</cite>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.analysed">
+<span class="sig-name descname"><span class="pre">analysed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioRun.analysed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioRun.analysed" title="Link to this definition">¶</a></dt>
+<dd><p>the analysis tables were made from this model’s own daily states (ANALYSED, written by the analysis).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="goodpush.models.physio.PhysioRun.mark">
+<span class="sig-name descname"><span class="pre">mark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">own</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/goodpush/models/physio.html#PhysioRun.mark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#goodpush.models.physio.PhysioRun.mark" title="Link to this definition">¶</a></dt>
+<dd><p>the analysis just made its tables from this model’s daily states (<cite>own</cite>) or without any.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>own</strong> (<em>bool</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -4443,11 +4521,12 @@ relative to it, as your past rides are to theirs).</p>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.noise_scale"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.noise_scale()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.LEVEL_DAYS"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.LEVEL_DAYS</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.LEVEL_MIN_RIDES"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.LEVEL_MIN_RIDES</span></code></a></li>
-<li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.LEVEL_SPRINT_PCT"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.LEVEL_SPRINT_PCT</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.LEVEL_BLOCK_DAYS"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.LEVEL_BLOCK_DAYS</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.own_level"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.own_level()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.FATIGUE_TAU_D"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.FATIGUE_TAU_D</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.usual_fatigue"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.usual_fatigue()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.steady"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.steady()</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.set_aside"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.set_aside()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.recovery"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.recovery()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.power_hours"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.power_hours()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioInputs.long_hours"><code class="docutils literal notranslate"><span class="pre">PhysioInputs.long_hours()</span></code></a></li>
@@ -4477,7 +4556,12 @@ relative to it, as your past rides are to theirs).</p>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.LOCK"><code class="docutils literal notranslate"><span class="pre">PhysioRun.LOCK</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.SEVERE"><code class="docutils literal notranslate"><span class="pre">PhysioRun.SEVERE</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.FULL_RUN"><code class="docutils literal notranslate"><span class="pre">PhysioRun.FULL_RUN</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.ANALYSED"><code class="docutils literal notranslate"><span class="pre">PhysioRun.ANALYSED</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.keep_compiled"><code class="docutils literal notranslate"><span class="pre">PhysioRun.keep_compiled()</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.cache_codec"><code class="docutils literal notranslate"><span class="pre">PhysioRun.cache_codec()</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.reset"><code class="docutils literal notranslate"><span class="pre">PhysioRun.reset()</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.analysed"><code class="docutils literal notranslate"><span class="pre">PhysioRun.analysed()</span></code></a></li>
+<li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.mark"><code class="docutils literal notranslate"><span class="pre">PhysioRun.mark()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.inputs"><code class="docutils literal notranslate"><span class="pre">PhysioRun.inputs()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.stored"><code class="docutils literal notranslate"><span class="pre">PhysioRun.stored()</span></code></a></li>
 <li><a class="reference internal" href="#goodpush.models.physio.PhysioRun.same_model"><code class="docutils literal notranslate"><span class="pre">PhysioRun.same_model()</span></code></a></li>
@@ -4600,7 +4684,7 @@ relative to it, as your past rides are to theirs).</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=0926e583"></script>
+</div><script src="_static/documentation_options.js?v=11bb8181"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>

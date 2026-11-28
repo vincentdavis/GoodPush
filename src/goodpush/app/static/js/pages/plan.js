@@ -12,7 +12,7 @@ import {seasonBlocks} from "../calendar/season.js";
 // saved by the server ("settings" action, one section per card)
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 export const SAVE_LABEL = {reanalyse: "Save and re-analyse", replan: "Save and rebuild plan", reload: "Save", nothing: "Save"};
-export const WIDE_KINDS = ["week", "days", "numbers", "history", "events"];
+export const WIDE_KINDS = ["week", "days", "numbers", "history", "events", "lines"];
 const STYLE_TEXT = {
   model: "Model: your fitted physiology picks each key day's session for the biggest gain on your race days "
     + "and at the end of the plan.",

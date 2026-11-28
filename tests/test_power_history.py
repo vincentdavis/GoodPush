@@ -58,6 +58,20 @@ def test_power_history_observes_each_days_best_its_ride_and_whether_it_was_all_o
     assert out["observed"][out["s"].index(3600)]["kind"][0] == "hard"           # a test is 20 min or shorter
     assert out["all_out_sd"] > 0 and set(o["kind"]) <= set(KINDS)
     assert PowerHistory(states, acts, None, fc).build()["observed"][0]["all_out"] is None   # no fit: no odds
+    assert max(o["bad"]) < 1                                                     # near or below the curve: good readings
+
+
+def test_a_best_far_over_the_curve_is_a_bad_reading_not_all_out():
+    """2026-11-26: a broken power meter's 1000 W for minutes reads as a bad reading (physio v17 BAD_READING_SHARE)."""
+    import pandas as pd
+    from goodpush.models.power_history import PowerHistory
+    states, acts, fit, fc = power_history_case()
+    glitch = acts.iloc[[1]].assign(id="g1", date=states.index[175] + pd.Timedelta(hours=9))
+    glitch[[c for c in acts if c.startswith("mmp_")]] *= 2 * 3.0                 # 3 x the curve (the row was half of it)
+    out = PowerHistory(states, pd.concat([acts, glitch], ignore_index=True), fit, fc).build()
+    o = out["observed"][out["s"].index(300)]
+    q = o["id"].index("g1")
+    assert o["bad"][q] > 99 and o["all_out"][q] < 1
 
 
 def test_curve_history_gives_model_and_measured_curves_weekly():

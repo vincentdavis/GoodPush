@@ -3,7 +3,7 @@
 | Problem | Fix |
 |---|---|
 | The computer won't open the app | It isn't code-signed yet: see [Install](../start/install.md) for the one-time "Open Anyway" / "Run anyway". |
-| No data after connecting Garmin | Click the cloud icon at the top right, then **Update now**; the Sync page shows what came in and the last update's log. Check the key in Settings (`goodpush garmin-key --test`); keys expire after the time you picked. |
+| No data after connecting Garmin | Click the sync icon (two arrows) at the top right, then **Update now**; the Sync page shows what came in and the last update's log. Check the key in Settings (`goodpush garmin-key --test`); keys expire after the time you picked. |
 | Only 90 days of rides | That's the Garmin key's first pull. Bring in the rest with an [account export](../start/data.md#2-bring-in-your-whole-history-an-account-export). |
 | The export was dropped but nothing changed | Drop the zip as downloaded (not unzipped). Then Settings > **Rebuild everything**. |
 | W/kg looks wrong | Set your weight in Settings (`weight_kg`). |

@@ -1,5 +1,5 @@
-// Today: one day at a time (#today, #today/2026-11-25): the verdict and the session in one card, that morning's numbers,
-// the next session; ‹ › (and the arrow keys, a swipe on a phone) step through the days (TodayPage). Sync state and setup
+// Today: one day at a time (#today, #today/2026-11-25): the verdict (its why open) and the session (its steps shown) in
+// one card, that morning's numbers; ‹ › (and the arrow keys, a swipe on a phone) step through the days (TodayPage). Sync state and setup
 // tasks are in the top bar (status_bar.js).
 import {Segmented} from "../controls.js";
 import {Page} from "./page.js";
@@ -9,7 +9,7 @@ import {delta, ICON, morningsStrip, niceDate, profileSVG, rideIt, markButtons, s
   STATUS_LABEL, stepsList, TYPE_LABEL, today} from "../widgets.js";
 import {router} from "../main.js";
 import {markers} from "../markers.js";
-import {cloudIcon, morningLabel, wellnessAge} from "../status_bar.js";
+import {syncIcon, morningLabel, wellnessAge} from "../status_bar.js";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const NO_VERDICT = '<svg viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/></svg>';
@@ -58,7 +58,7 @@ class TodayPage extends Page {
   // no Garmin and no mornings: the one setup step that keeps today's verdict away gets a line here
   nudge(d) {
     if (d !== today() || wellnessAge() != null || S.garmin_api?.configured) return "";
-    return `<div class="nudge">${cloudIcon("off")}<span><b>Connect Garmin</b> to get a readiness verdict: your sleep, HRV and resting HR
+    return `<div class="nudge">${syncIcon("off")}<span><b>Connect Garmin</b> to get a readiness verdict: your sleep, HRV and resting HR
       each morning. The Personal API key goes in once.</span><span class="spacer"></span><a class="btn sm primary" href="#settings/keys">Connect Garmin</a></div>`;
   }
 
@@ -97,7 +97,7 @@ class TodayPage extends Page {
       <div><h2>${esc(STATUS_LABEL[st] || st)}</h2><div class="basis">${basis}</div></div></div>
       <p class="vwhy">${esc(reasons[0] || "Nothing flagged in sleep, HRV, resting HR or load.")}</p>
       ${this.feel()}
-      <details class="dayfold" id="todaywhy"><summary>Why</summary><div class="whybody">${more}</div></details></div>`;
+      <details class="dayfold" id="todaywhy" open><summary>Why</summary><div class="whybody">${more}</div></details></div>`;
   }
 
   session(d) {
@@ -122,9 +122,9 @@ class TodayPage extends Page {
       ${profileSVG(s)}
       ${s.adjusted ? `<div class="adj">⚠ ${esc(s.adjusted)}</div>` : ""}
       ${d === td ? markButtons(s) : ""}
-      <details class="dayfold" id="todaysteps"><summary>Steps and why</summary><div class="whybody">${steps}
+      <div class="whybody" id="todaysteps">${steps}
         ${s.note ? `<p class="why">${esc(s.note)}</p>` : ""}<p class="why">${esc(s.why)}</p>
-        ${d !== td ? markButtons(s) : ""}</div></details>
+        ${d !== td ? markButtons(s) : ""}</div>
       ${proposal}</div>`;
   }
 
@@ -161,24 +161,15 @@ class TodayPage extends Page {
     </div></div>`;
   }
 
-  nextLine(d) {
-    if (d < today()) return "";
-    const n = sessions().find((x) => x.date > d && x.type !== "rest");
-    if (!n) return "";
-    return `<div class="nextline"><span class="muted">Next</span><a href="${this.dayHref(n.date)}"><b>${esc(niceDate(n.date))}: ${esc(n.title)}</b></a>
-      <span class="muted">${hhmm(n.minutes)} · ${fmt(n.tss)} TSS</span><span class="spacer"></span><a href="#plan">Week plan →</a></div>`;
-  }
-
   html() {
     const td = today();
     if (!td) return `<h1>${S.name ? `Hi ${esc(S.name)}` : "Today"}</h1>${this.nudge(td)}<div class="card muted">No data yet. Connect Garmin
-      (the cloud icon at the top) or drop your Garmin or Strava export (.zip) anywhere on this page.</div>`;
+      (the sync icon at the top: two arrows) or drop your Garmin or Strava export (.zip) anywhere on this page.</div>`;
     const d = this.day();
     return `${this.header(d)}
       ${this.nudge(d)}
       <div class="daycard">${this.verdict(d)}${this.session(d)}</div>
-      ${this.strip(d)}
-      ${this.nextLine(d)}`;
+      ${this.strip(d)}`;
   }
 
   wire() {
@@ -188,21 +179,33 @@ class TodayPage extends Page {
 }
 export const todayPage = new TodayPage();
 
-// ← / → step through the days; on a phone, a sideways swipe on the page
-document.addEventListener("keydown", (e) => {
-  if (router.route() !== "today" || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-  if (e.target.closest?.("input, textarea, select, [contenteditable], .seg, .stpop")) return;
-  if (e.key === "ArrowLeft") { e.preventDefault(); todayPage.step(-1); }
-  if (e.key === "ArrowRight") { e.preventDefault(); todayPage.step(1); }
-});
-let touch = null;
-document.addEventListener("touchstart", (e) => {
-  touch = router.route() === "today" && e.touches.length === 1 && e.target.closest("#main") && !e.target.closest("svg, .seg, details")
-    ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : null;
-}, {passive: true});
-document.addEventListener("touchend", (e) => {
-  if (!touch) return;
-  const dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y;
-  touch = null;
-  if (Math.abs(dx) > 70 && Math.abs(dy) < Math.abs(dx) / 2) todayPage.step(dx < 0 ? 1 : -1);
-}, {passive: true});
+// ← / → step through the days; on a phone, a sideways swipe on the page (DaySteps: listening from the start)
+class DaySteps {
+  touch = null;                  // where a one-finger touch on the page began
+
+  listen() {
+    document.addEventListener("keydown", (e) => this.key(e));
+    document.addEventListener("touchstart", (e) => this.start(e), {passive: true});
+    document.addEventListener("touchend", (e) => this.end(e), {passive: true});
+  }
+
+  key(e) {
+    if (router.route() !== "today" || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.target.closest?.("input, textarea, select, [contenteditable], .seg, .stpop")) return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); todayPage.step(-1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); todayPage.step(1); }
+  }
+
+  start(e) {
+    this.touch = router.route() === "today" && e.touches.length === 1 && e.target.closest("#main")
+      && !e.target.closest("svg, .seg, details") ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : null;
+  }
+
+  end(e) {
+    if (!this.touch) return;
+    const dx = e.changedTouches[0].clientX - this.touch.x, dy = e.changedTouches[0].clientY - this.touch.y;
+    this.touch = null;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < Math.abs(dx) / 2) todayPage.step(dx < 0 ? 1 : -1);
+  }
+}
+new DaySteps().listen();

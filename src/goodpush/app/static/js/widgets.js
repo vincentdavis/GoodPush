@@ -35,16 +35,19 @@ export function signsRow(rd) {
   return `<div class="signs">${G.map((g) => `<span class="status sm ${cls[Math.min(g.points, 2)]}" title="${esc(g.text)}">${esc(g.name)}</span>`).join("")}
     ${hint("This morning's signs against your usual (hover one for its numbers).\n• Green: normal · amber: a bit off (1 point) · red: well off (2 points)\n• 2 points together: an amber day; 4: red\n• One sign alone changes nothing\n• How you feel and your illness markers count on their own")}</div>`;
 }
-export function morningsStrip(rd) {              // the last 7 mornings' readiness, today last
+// the last 7 mornings' readiness, today last: one oval each in the colour-blind-safe status colours (--good / --warn / --bad),
+// the day, verdict and reasons in its tooltip and label, so the colour never carries it alone
+export function morningsStrip(rd) {
   const M = rd.mornings;
   if (!M?.length) return "";
   const n = M.filter((m) => m.status !== "green").length;
-  const row = (m) => `<li><span class="status sm ${esc(m.status)}">${esc(STATUS_LABEL[m.status] || m.status)}</span>
-    <b>${esc(niceDate(m.date, {weekday: "short", day: "numeric", month: "short"}))}</b>
-    <span class="${m.reasons.length ? "" : "muted"}">${m.reasons.length ? m.reasons.map(esc).join("; ") : "nothing flagged"}</span></li>`;
-  return `<details class="mornings"><summary>Last 7 mornings: ${n} not green${
-    rd.streak ? " – a run: tomorrow easy too, until a green morning" : ""}</summary>
-    <ul>${[...M].reverse().map(row).join("")}</ul></details>`;
+  const dot = (m) => {
+    const t = `${niceDate(m.date, {weekday: "short", day: "numeric", month: "short"})}: ${STATUS_LABEL[m.status] || m.status}`
+      + ` – ${m.reasons.length ? m.reasons.join("; ") : "nothing flagged"}`;
+    return `<span class="mdot7 ${esc(m.status)}" role="img" title="${esc(t)}" aria-label="${esc(t)}"></span>`;
+  };
+  return `<div class="mornings"><span>Last 7 mornings</span><span class="mdots">${M.map(dot).join("")}</span>
+    <span class="muted">${n ? `${n} not green` : "all green"}${rd.streak ? " – a run: tomorrow easy too, until a green morning" : ""}</span></div>`;
 }
 export function niceDate(ds, opts = {weekday: "short", day: "numeric", month: "short"}) {
   return new Date(ds + "T12:00:00").toLocaleDateString(undefined, opts);

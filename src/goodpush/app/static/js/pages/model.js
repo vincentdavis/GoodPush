@@ -3,18 +3,20 @@
 import {ask, Lazy, Pref, Segmented} from "../controls.js";
 import {Page} from "./page.js";
 import {api, S} from "../api.js";
-import {$, css, esc, fmt} from "../util.js";
+import {$, css, esc, fmt, INTENSITY_COL} from "../util.js";
 import {hint, niceDate, tile} from "../widgets.js";
 import {router} from "../main.js";
 import {DOMAIN, DOMAIN_ORDER, riderPage} from "./rider.js";
 import {EChart, TimeWindow} from "../charts.js";
 import {GUIDE} from "./help.js";
 
-const MODEL_Q = {cp: ["CP", "W", "--s1"], map: ["MAP (5 min)", "W", "--s2"], ftp: ["FTP (1-hour power)", "W", "--s4"], lt1: ["LT1", "W", "--s3"],
-  w_prime: ["W′", "kJ", "--s7"], pmax: ["Pmax (sprint)", "W", "--muted"], fade: ["Fade past 30 min", "% of CP", "--ink2"]};
-const KIND_COL = {easy: ["Easy ride", "--line"], hard: ["Hard ride", "--s3"], test: ["Test", "--s1"], maxed: ["Heart rate maxed", "--s2"]};
+const MODEL_Q = {cp: ["CP", "W", INTENSITY_COL.cp], map: ["MAP (5 min)", "W", INTENSITY_COL.map], ftp: ["FTP (1-hour power)", "W", INTENSITY_COL.ftp], lt1: ["LT1", "W", INTENSITY_COL.lt1],
+  w_prime: ["W′", "kJ", INTENSITY_COL.w_prime], pmax: ["Pmax (sprint)", "W", INTENSITY_COL.pmax], fade: ["Fade past 30 min", "% of CP", "--ink2"]};
+const KIND_COL = {easy: ["Easy ride", "--line", "circle"], hard: ["Hard ride", "--s3", "circle"], test: ["Test", "--s1", "diamond"],
+  maxed: ["Heart rate maxed", "--s2", "triangle"]};
+const SHAPE_GLYPH = {circle: "●", diamond: "◆", triangle: "▲", rect: "■"};   // the legend's marks, as the chart draws them
 const CHAIN_COL = ["--s1", "--s2", "--s3", "--s4", "--s7"];
-const READ_LINE = {lt1: ["LT1", "--s3"], cp: ["CP", "--s1"], map: ["MAP", "--s2"], ftp: ["FTP", "--s4"]};
+const READ_LINE = {lt1: ["LT1", INTENSITY_COL.lt1], cp: ["CP", INTENSITY_COL.cp], map: ["MAP", INTENSITY_COL.map], ftp: ["FTP", INTENSITY_COL.ftp]};   // the zone colour map
 const DOT_COL = ["--s1", "--s2", "--s3", "--s4", "--s7", "--ink2", "--muted"];
 // threshold readings' sources (models.physio SOURCES) by the names people know
 const READ_NAME = {my_ftp: "FTP you entered", alpha1_lt1: "alpha1 on rides (LT1)", ramp_lt1: "Ramp test, alpha1 (LT1)",
@@ -162,6 +164,11 @@ class ModelPage extends Page {
     return [!failed.length, failed];
   }
 
+  runDate(d) {         // "YYYY-MM-DD HH:MM" (the run's local time) as "Nov 27, 17:00"
+    const [day, time] = String(d || "").split(" ");
+    return day ? niceDate(day, {day: "numeric", month: "short"}) + (time ? `, ${time}` : "") : "";
+  }
+
   // can the ranges be believed: one verdict for the top of the page (ModelRunCard.html)
   rangesVerdict() {
     const D = this.model.data, ck = this.samplerChecks(), day = D.draws_day ? esc(niceDate(D.draws_day, {day: "numeric", month: "short"})) : "";
@@ -196,7 +203,7 @@ class ModelPage extends Page {
     const rows = G.slowest.map((p) => `<tr><td><code>${esc(p.name)}</code>${p.judged ? "" : ' <span class="muted">(not judged)</span>'}</td><td class="n">${p.ess}</td><td class="n">${fmt(p.r_hat, 3)}</td><td class="n small">${p.chain_means.map((v) => fmt(v, 2)).join(" · ")}</td></tr>`).join("");
     return `<details class="fold" id="mdSampler"><summary>Sampler details: ${ok ? "passed" : "not passed yet"} <span class="small muted">(R-hat ${fmt(G.r_hat, 3)}, ESS ${fmt(G.min_ess)})</span></summary>
     ${hint("Is the sampler's picture of the uncertainty trustworthy? Several chains from different starts: if they agree, the ranges can be believed.\n• R-hat: how much chains disagree (1.00 none; above 1.01 worth a look)\n• ESS: independent draws they're worth (a few hundred is enough)\n• Divergences: a few harmless; many in one chain = it got stuck\n• Pmax's own parameters aren't judged (sprints are outside the plan)")}
-    <p class="sub">NUTS run of ${esc(G.date)}: ${G.chains} chains × ${G.draws} draws after ${G.warmup} warm-up steps, ${G.parameters} parameters${this.model.data.draws_day && this.model.data.day !== this.model.data.draws_day ? ` · ranges as of ${esc(niceDate(this.model.data.draws_day, {day: "numeric", month: "short"}))} (re-made about weekly); best fit up to ${esc(niceDate(this.model.data.day, {day: "numeric", month: "short"}))}` : ""}</p>
+    <p class="sub">Sampling run of ${esc(this.runDate(G.date))}: ${G.chains} chains × ${G.draws} draws after ${G.warmup} warm-up steps, ${G.parameters} parameters${this.model.data.draws_day && this.model.data.day !== this.model.data.draws_day ? ` · ranges as of ${esc(niceDate(this.model.data.draws_day, {day: "numeric", month: "short"}))} (re-made about weekly); best fit up to ${esc(niceDate(this.model.data.day, {day: "numeric", month: "short"}))}` : ""}</p>
     <div class="tiles">
       ${tile("Worst R-hat", fmt(G.r_hat, 3), "", G.r_hat <= 1.01 ? "chains agree" : "chains disagree a little", G.r_hat <= 1.01 ? "up" : "down", "The largest R-hat over the judged parameters.\n• 1.00 = chains agree; aim for 1.01 or less")}
       ${tile("Smallest ESS", fmt(G.min_ess), "", G.min_ess >= 400 ? "plenty for 5–95 % ranges" : "ranges still rough", G.min_ess >= 400 ? "up" : "down", "The fewest effective independent draws of any judged parameter.")}
@@ -268,7 +275,9 @@ class ModelPage extends Page {
     const x = d.concat(fut.map(([q]) => q)), ms = (q) => new Date(q + "T12:00:00").getTime(), f1 = (v) => fmt(v, 1);
     const ahead = d.map((_, i) => (i === d.length - 1 ? P.fatigue[i] : null)).concat(fut.map(([, i]) => F.fatigue[i]));
     TimeWindow.of("mdFatigue").showLast(365, ms(last), ms(x[x.length - 1]), 365);
-    EChart.draw("mdFatigue", {x, xType: "date", yFmt: f1, scrollbar: true, vline: fut.length ? ms(last) : null, planFrom: ms(last), hline: P.fatigue_cap, series: [
+    const now = P.fatigue[d.length - 1], top = Math.max(...P.fatigue.filter((v) => v != null));
+    EChart.draw("mdFatigue", {x, xType: "date", yFmt: f1, scrollbar: true, yName: "Recent hours at CP",
+      label: `Model fatigue over time, in recent hours at CP: ${fmt(now, 1)} now, ${fmt(top, 1)} at its highest.`, vline: fut.length ? ms(last) : null, planFrom: ms(last), hline: P.fatigue_cap, series: [
       {kind: "line", y: P.fatigue.concat(fut.map(() => null)), color: css("--s2"), name: "Fatigue", fmt: f1},
       {kind: "line", y: ahead, color: css("--s2"), dash: true, name: "Fatigue, planned", planned: true, fmt: f1}]});
   }
@@ -287,11 +296,11 @@ class ModelPage extends Page {
       <div class="small"><b>${fmt((v || 0) * 100)} %</b> of the gain</div>${vs(r)}</td>`;
     };
     const rows = DOMAIN_ORDER.filter((d) => E[d]).map((d) => `<tr><td>${riderPage.swatch(d)}<b>${esc(DOMAIN[d][1])}</b>${dw[d] ? `<div class="small muted">${dw[d]}</div>` : ""}</td>
-      <td class="n">${fmt(hw[d], 1)} h<div class="small muted">${fmt(ex[d])} h in 2 years</div></td>
-      ${PARTS.map(([k]) => share(d, k)).join("")}</tr>`).join("");
-    return `<details class="fold" open><summary>What each kind of riding did for you (last 12 months)</summary>
+      <td class="n" data-label="Hours a week">${fmt(hw[d], 1)} h<div class="small muted">${fmt(ex[d])} h in 2 years</div></td>
+      ${PARTS.map(([k, n]) => share(d, k).replace("<td", `<td data-label="${n}"`)).join("")}</tr>`).join("");
+    return `<h3 class="mdsub">What each kind of riding did for you (last 12 months)</h3>
   <div class="card">${hint("Each kind of riding: your hours a week and its share of each gain (how much you rode × how well it trains that part). A column adds up to 100 %.\n• Below a share: how well it trains that part vs the model's prior\n• \"≈ as assumed\": your data barely changed it (an assumption, not a finding)\n• LT1 closer to 1-h power: how high easy riding reaches\n• CP closer to MAP: how much of it you can sustain\n• MAP: 5-minute power, the ceiling")}
-    <div class="tw"><table><thead><tr><th>Riding</th><th class="n">Hours a week</th>${PARTS.map(([, n]) => `<th style="min-width:130px">${n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div></details>`;
+    <div class="tw"><table class="stacktable"><thead><tr><th>Riding</th><th class="n">Hours a week</th>${PARTS.map(([, n]) => `<th style="min-width:130px">${n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   html() {
@@ -301,19 +310,21 @@ class ModelPage extends Page {
         + `(<code>goodpush physio</code>, or the app's next update).</div>${this.runCard.html(this.model.data)}`;
     }
     const R = this.model.data.readings || {sources: []};
-    const src = R.sources.filter((s) => s.n).map((s) => `<tr><td>${esc(readName(s.name))}</td><td>${esc(s.quantity.toUpperCase())}${s.bound ? " (cap)" : ""}</td><td class="n">${s.n}</td><td class="n">${s.bias_pct > 0 ? "+" : ""}${fmt(s.bias_pct, 1)} %</td><td class="n">${s.sd_pct == null ? "–" : "±" + fmt(s.sd_pct, 1) + " %"}</td></tr>`).join("");
+    const src = R.sources.filter((s) => s.n).map((s) => `<tr><td>${esc(readName(s.name))}</td><td data-label="Measures">${esc(s.quantity.toUpperCase())}${s.bound ? " (cap)" : ""}</td><td class="n" data-label="Count">${s.n}</td><td class="n" data-label="Bias">${s.bias_pct > 0 ? "+" : ""}${fmt(s.bias_pct, 1)} %</td><td class="n" data-label="Spread">${s.sd_pct == null ? "–" : "±" + fmt(s.sd_pct, 1) + " %"}</td></tr>`).join("");
     const used = this.readQuantities(), q = used.includes(this.readQ) ? this.readQ : used[0];
     return `<h1>The model${hint("Can you trust the physiology model behind the Rider page and the plan?\n• Can its ranges be believed\n• How far off its forecasts have been\n• How sure it is of today's numbers\n• Its predictions next to what you rode and measured\nOne rider, observational: a check, not proof.")}</h1>
   <p class="sub">${this.versionLine()} · fitted to your data up to ${esc(niceDate(this.model.data.day, {day: "numeric", month: "short", year: "numeric"}))}. <a href="#rider">← Rider</a> · <a href="${GUIDE}model/overview.html" target="_blank" rel="noopener">How the model works ↗</a></p>
   ${this.versionWarning()}
   ${this.runCard.html(this.model.data, this.rangesVerdict())}
-  <h2>Status${hint(STATUS_TIP)}</h2>
-  ${this.runCard.statusHtml(this.model.data, this.verdictSection())}
-  ${this.samplerSection()}
+  <p class="mdgroup">What the model says about you</p>
   ${this.uncertaintySection()}
   ${this.fatigueSection()}
   ${this.trainingSection()}
   ${this.ridingSection()}
+  <p class="mdgroup">How far to trust it</p>
+  <h2>Status${hint(STATUS_TIP)}</h2>
+  ${this.runCard.statusHtml(this.model.data, this.verdictSection())}
+  ${this.samplerSection()}
   <h2>Predicted vs observed${hint("The model's all-out power on the day (fatigue included) against each ride's best, last year.\n• All-out efforts: on the line · most rides: below it\n• Well above the line: efforts the model didn't think you could do\n• Easy rides hidden unless you show them")}</h2>
   <div class="card"><div class="row"><div class="legend" id="mdKindLegend">${this.kindLegend()}</div>
     <span class="spacer"></span><div class="seg"><button id="mdEasy" class="${this.showEasy.value ? "on" : ""}" title="Show easy rides' best powers too">Easy rides</button></div>
@@ -324,7 +335,7 @@ class ModelPage extends Page {
     <div class="seg" id="mdReadFair"><button data-f="1" class="${this.readFair.value ? "on" : ""}">Bias removed</button><button data-f="0" class="${this.readFair.value ? "" : "on"}">As read</button></div>
     <div class="seg" id="mdReadQ">${used.map((k) => `<button data-q="${k}" class="${k === q ? "on" : ""}">${READ_LINE[k][0]}</button>`).join("")}</div></div>
     <div id="mdRead" class="chart"></div>
-    <div class="tw" style="margin-top:10px"><table class="small"><thead><tr><th>Reading</th><th>Measures</th><th class="n">Count</th><th class="n">Bias${hint("How far this kind of reading sits from the model on average (+ = reads high).")}</th><th class="n">Spread${hint("How noisy this kind of reading is: its typical difference from the model, after the bias.")}</th></tr></thead><tbody>${src}</tbody></table></div></div>` : ""}`;
+    <div class="tw" style="margin-top:10px"><table class="small stacktable kv"><thead><tr><th>Reading</th><th>Measures</th><th class="n">Count</th><th class="n">Bias${hint("How far this kind of reading sits from the model on average (+ = reads high).")}</th><th class="n">Spread${hint("How noisy this kind of reading is: its typical difference from the model, after the bias.")}</th></tr></thead><tbody>${src}</tbody></table></div></div>` : ""}`;
   }
 
   // the model version: of the stored fit, of the code this app runs, of the code on disk (models.physio.PhysioRun)
@@ -344,7 +355,7 @@ class ModelPage extends Page {
   }
 
   kindLegend() {
-    return Object.entries(KIND_COL).filter(([k]) => k !== "easy" || this.showEasy.value).map(([, [n, c]]) => `<span><i class="dot" style="background:var(${c})"></i>${n}</span>`).join("")
+    return Object.entries(KIND_COL).filter(([k]) => k !== "easy" || this.showEasy.value).map(([, [n, c, sh]]) => `<span><b class="sym" style="color:var(${c})" aria-hidden="true">${SHAPE_GLYPH[sh]}</b>${n}</span>`).join("")
       + '<span><i class="dash" style="border-color:var(--muted)"></i>Observed = predicted</span>';
   }
 
@@ -361,7 +372,7 @@ class ModelPage extends Page {
       const say = t.corr != null && t.corr >= 0.5 && flat ? "gains and losses at the right times, but too small"
         : t.share >= 0.5 ? "training accounts for most of the change" : t.share < 0.2 ? "training explains little of the change" : "training explains part of the change";
       const together = t.corr == null ? "" : ` The two rise and fall together ${fmt(t.corr, 2)} (1 = always).`;
-      return tile(name, fmt(100 * Math.max(t.share, 0)), "% from training", say, flat ? "down" : "up",
+      return tile(name, fmt(100 * Math.max(t.share, 0)), "% from training", say, t.share < 0.2 ? "down" : flat || t.share < 0.5 ? "mid" : "up",
         `Over ${T.days / 7}-week stretches your ${name} typically moved ${fmt(t.change_pct, 1)} % (from your rides `
         + `and tests). Predicted from your training alone it moves ${fmt(t.training_change_pct, 1)} %.${together}`);
     }).join("");
@@ -385,11 +396,12 @@ class ModelPage extends Page {
     const span = Math.max(...all) - Math.min(...all) + 2 * pad, tick = [10, 20, 25, 50, 100, 200].find((t) => span / t <= 7) || 500;
     const lo = Math.floor((Math.min(...all) - pad) / tick) * tick, hi = Math.ceil((Math.max(...all) + pad) / tick) * tick;
     EChart.draw("mdEffort", {x: [lo, hi], xType: "num", xDomain: [lo, hi], yDomain: [lo, hi], tick,
-      xName: "Predicted: the model's all-out power that day", yName: "Observed: your best",
+      xName: "Predicted: the model's all-out power that day", yName: "Observed",
       xLabel: (v) => `model ${fmt(v)} W`, xTickFmt: (v) => fmt(v) + " W", yFmt: (v) => v + " W",
-      series: [...Object.entries(KIND_COL).map(([k, [n, c]]) => {    // the dots first: hover follows the first series
+      label: `Each ride's best against the model's prediction, ${pick.length} efforts: ${pick.filter((i) => E.observed[i] > E.predicted[i] * 1.03).length} clearly above the prediction, ${pick.filter((i) => E.observed[i] >= E.predicted[i] * 0.97).length} at or above it.`,
+      series: [...Object.entries(KIND_COL).map(([k, [n, c, sh]]) => {    // the dots first: hover follows the first series
           const ix = pick.filter((i) => E.kind[i] === k);
-          return {kind: "dots", r: k === "easy" ? 2 : 3, x: ix.map((i) => E.predicted[i]), y: ix.map((i) => E.observed[i]), color: css(c), name: n, fmt: (v) => fmt(v) + " W"};
+          return {kind: "dots", shape: sh, r: k === "easy" ? 2 : 3, x: ix.map((i) => E.predicted[i]), y: ix.map((i) => E.observed[i]), color: css(c), name: n, fmt: (v) => fmt(v) + " W"};
         }).filter((q) => q.x.length),
         {kind: "line", x: [lo, hi], y: [lo, hi], color: css("--muted"), dash: true, width: 1, range: false, name: ""}]});
   }
@@ -406,7 +418,9 @@ class ModelPage extends Page {
     const seen = (n, i) => fair ? R.observed[i] / bias[n] : R.observed[i];
     $("#mdReadLegend").innerHTML = `<span><i style="background:var(${qCol})"></i>Model ${qName}</span>` +
       names.map((n, j) => `<span><i class="dot" style="background:var(${cols[j % cols.length]})"></i>${esc(readName(n))}</span>`).join("");
-    EChart.draw("mdRead", {x: D.date, xType: "date", yFmt: (v) => v + " W", series: [
+    const nRead = names.reduce((a, n) => a + R.source.filter((x) => x === n).length, 0), lastQ = (D[q] || []).at(-1);
+    EChart.draw("mdRead", {x: D.date, xType: "date", yFmt: (v) => v + " W",
+      label: `The model's ${qName} over time, ${fmt(lastQ)} W now, with ${nRead} readings${fair ? ", each with its kind's bias removed" : ""}.`, series: [
       {kind: "line", y: D[q] || [], color: css(qCol), name: `Model ${qName}`, fmt: (v) => fmt(v) + " W", width: 1.6},
       ...names.map((n, j) => { const ix = R.source.map((s, i) => s === n ? i : -1).filter((i) => i >= 0);
         return {kind: "dots", r: 3, x: ix.map((i) => ms(R.date[i])), y: ix.map((i) => seen(n, i)), color: css(cols[j % cols.length]),

@@ -7,10 +7,11 @@ import {$, esc, fmt, LOCAL} from "./util.js";
 import {niceDate, today} from "./widgets.js";
 import {exportDrop} from "./export_drop.js";
 
-const CLOUD = '<path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z"/>';
-const MARK = {ok: '<path d="M9.5 13.5l2 2 3.5-3.5"/>', warn: '<path d="M12 10.5v3M12 15.8v.01"/>',
-  bad: '<path d="M10 11l4 4M14 11l-4 4"/>', off: '<path d="M4 4l16 16"/>', run: ""};
-export const cloudIcon = (level) => `<svg viewBox="0 0 24 24" aria-hidden="true">${CLOUD}${MARK[level] || ""}</svg>`;
+// two arrows round the state's mark: the data on this computer brought up to date (not a cloud: nothing goes to one)
+const ARROWS = '<path d="M19 9a7.5 7.5 0 0 0-13.2-1.8M5 15a7.5 7.5 0 0 0 13.2 1.8"/><path d="M19 4.5V9h-4.5M5 19.5V15h4.5"/>';
+const MARK = {ok: '<path d="M9.5 12l1.8 1.8 3.2-3.3"/>', warn: '<path d="M12 9.5v3M12 14.8v.01"/>',
+  bad: '<path d="M10 10l4 4M14 10l-4 4"/>', off: '<path d="M4 4l16 16"/>', run: ""};
+export const syncIcon = (level) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ARROWS}${MARK[level] || ""}</svg>`;
 const LEVEL_LABEL = {ok: "Up to date", warn: "Garmin is behind", bad: "Last update had a problem", off: "Garmin not connected",
   run: "Updating…"};
 
@@ -166,7 +167,7 @@ class StatusBar {
         title="Setup: ${done} of ${T.length} done">${this.ring(done, T.length)}<span class="lbl">Setup</span><span class="n">${done}/${T.length}</span></button>` : ""}
       <span class="syncwrap${this.open === "sync" ? " open" : ""}">
         <button class="btn sm ghost circle syncicon s-${lv}" id="syncicon" type="button" aria-haspopup="dialog" aria-expanded="${this.open === "sync"}"
-          aria-label="Sync status: ${esc(tip)}">${cloudIcon(lv)}<i class="dot"></i></button>
+          aria-label="Sync status: ${esc(tip)}">${syncIcon(lv)}<i class="dot"></i></button>
         <span class="sttip" role="tooltip">${esc(tip)}</span></span>
       ${this.open === "sync" ? syncStatus.popover() : this.open === "setup" ? setupTasks.popover() : ""}`;
     this.key = this.stateKey();
@@ -193,7 +194,8 @@ class StatusBar {
   }
 
   wire() {
-    document.addEventListener("click", (e) => { if (this.open && !e.composedPath().some((n) => n.id === "statusbar")) { this.open = null; this.render(); } });
+    window.addEventListener("hashchange", () => { if (this.open) { this.open = null; this.render(); } });   // a new page
+    document.addEventListener("click",(e) => { if (this.open && !e.composedPath().some((n) => n.id === "statusbar")) { this.open = null; this.render(); } });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && this.open) { const w = this.open; this.open = null; this.render(); $(w === "sync" ? "#syncicon" : "#setupbtn")?.focus(); }
     });

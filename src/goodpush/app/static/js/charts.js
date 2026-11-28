@@ -115,7 +115,9 @@ export class SelectionPanel {
 // yExtra [arrays on x] (also set the y axis, not drawn), xAxis false (no x labels: for charts stacked above one that
 // has them), xDomain [a, b] (the full x range, when it isn't just the data's), vline / hline, shade, bands, planFrom,
 // tipNote(x), tipReverse, onPick(x), onHover(x), onView, select, xStep, xName / yName (axis titles), yDomain [a, b]
-// (a fixed y range, e.g. the same as xDomain for a predicted-vs-observed chart), tick (one tick step on both axes).
+// (a fixed y range, e.g. the same as xDomain for a predicted-vs-observed chart), tick (one tick step on both axes),
+// label (what the chart shows, in a sentence: its text alternative for screen readers). A dots series may set shape
+// ("circle" | "diamond" | "triangle" | "rect"), so its kind isn't told by colour alone.
 // Drawn by Apache ECharts (static/vendor), which does the axes, ticks, marks, crosshair, tooltip box, zoom / pan (dataZoom: Ctrl + wheel / pinch zooms,
 // drag or Shift + wheel pans, the slider is the scrollbar, double-click shows all). A group's charts (spec.group) share
 // their x range, zoom and crosshair: passed on here (pointer, zoomed), not by ECharts' connect, which shows a pointer only
@@ -139,6 +141,7 @@ export class EChart {
   static draw(id, spec) {
     const box = document.getElementById(id);
     if (!box) return;
+    if (spec.label) { box.setAttribute("role", "img"); box.setAttribute("aria-label", spec.label); }
     for (const [k, c] of Object.entries(EChart.live)) if (!c.chart.getDom().isConnected) { c.chart.dispose(); delete EChart.live[k]; }
     const c = EChart.live[id];
     if (c && c.chart.getDom() === box) c.update(spec);
@@ -345,7 +348,8 @@ export class EChart {
     if (s.kind === "dots") {
       const data = X.flatMap((x, i) => s.y[i] == null ? [] : [{value: [x, s.y[i]],
         itemStyle: {opacity: s.alpha ? s.alpha[i] : s.r ? 0.75 : 1}}]);
-      const out = [{type: "scatter", data, symbolSize: 2 * (s.r || 4), itemStyle: s.hollow
+      const out = [{type: "scatter", data, symbol: s.shape || "circle", symbolSize: 2 * (s.r || 4) * (s.shape && s.shape !== "circle" ? 1.25 : 1),
+        itemStyle: s.hollow
         ? {color: "transparent", borderColor: col, borderWidth: 1.2}
         : {color: col, borderColor: s.r ? "transparent" : css("--surface"), borderWidth: s.r ? 0 : 1.5}}];
       if (s.lo) {

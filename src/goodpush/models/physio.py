@@ -145,20 +145,28 @@ class PhysioInputs:
 
     LEVEL_DAYS = 365                             # own_level: the rider's first year of efforts
     LEVEL_MIN_RIDES = 10                            # ... with at least this many rides, else no level of their own
-    LEVEL_SPRINT_PCT = 98                           # the sprint level: this percentile (a 5-s best can be a spike)
+    LEVEL_BLOCK_DAYS = 56                           # ... the median of its best in each block of this many days
 
     @classmethod
     def own_level(cls, effort_day: np.ndarray, effort_s: np.ndarray, effort_w: np.ndarray) -> tuple | None:
-        """about where this rider's MAP and Pmax start (W), for the priors' centre: the best 5-min power and the
-        LEVEL_SPRINT_PCT percentile of the 5-s bests in the first LEVEL_DAYS with efforts (a year's best 5 min is
-        about all-out for most riders; the priors stay wide around it). None with under LEVEL_MIN_RIDES of either."""
+        """about where this rider's MAP and Pmax start (W), for the priors' centre: the median over the first
+        LEVEL_DAYS with efforts of each LEVEL_BLOCK_DAYS block's best 5-min and 5-s power (most 8-week blocks hold
+        a near all-out effort; the median ignores a block a broken power meter set - 2026-11-26: the year's best
+        5 min was one 1000 W glitch and put the MAP prior at 3.3 x the truth). The priors stay wide around it.
+        None with under LEVEL_MIN_RIDES of either."""
         if not len(effort_day):
             return None
         early = effort_day < effort_day.min() + cls.LEVEL_DAYS
-        five, sprint = effort_w[early & (effort_s == 300)], effort_w[early & (effort_s == 5)]
-        if min(len(five), len(sprint)) < cls.LEVEL_MIN_RIDES:
-            return None
-        return float(five.max()), float(np.percentile(sprint, cls.LEVEL_SPRINT_PCT))
+        block = (effort_day - effort_day.min()) // cls.LEVEL_BLOCK_DAYS
+        level = []
+        for s in (300, 5):
+            m = early & (effort_s == s)
+            if m.sum() < cls.LEVEL_MIN_RIDES:
+                return None
+            best = np.full(int(block[m].max()) + 1, -np.inf)
+            np.maximum.at(best, block[m], effort_w[m])
+            level.append(float(np.median(best[np.isfinite(best)])))
+        return tuple(level)
 
     FATIGUE_TAU_D = 7.0                             # usual_fatigue: the model's fatigue time constant, about
 
@@ -195,6 +203,8 @@ class PhysioInputs:
         rep = [np.zeros(ok.sum(), bool)]
         if intervals is not None and len(intervals):
             st = intervals[(intervals["seconds"] >= HR_REP_S) & (intervals["cv"] <= HR_REP_CV) & intervals["hr_late"].notna()]
+            if "id" in st:                           # a broken meter's reps: no watts at heart rate from them
+                st = st[~st["id"].astype(str).isin(cls.set_aside(rides))]
             d = days.get_indexer(pd.to_datetime(st["date"]).dt.normalize())
             day.append(d), w.append(st["watts"].to_numpy(float)), hr.append(st["hr_late"].to_numpy(float))
             rep.append(np.ones(len(st), bool))
@@ -203,6 +213,14 @@ class PhysioInputs:
         w, x, rep = np.concatenate(w), np.concatenate(hr) / thr, np.concatenate(rep)
         keep = (day >= 0) & np.isfinite(w) & (w > 0) & (x >= cls.STEADY_X[0]) & (x <= cls.STEADY_X[1])
         return day[keep].astype(int), w[keep], x[keep], rep[keep]
+
+    @staticmethod
+    def set_aside(rides: pd.DataFrame) -> pd.Series:
+        """the ids of rides whose power is set aside (metrics.power_check: marked wrong, or heart rate said so)."""
+        if "power_ignored" not in rides or "id" not in rides:
+            return pd.Series(dtype=str)
+        out = rides["id"].astype(str).str.replace(r"\.0$", "", regex=True)
+        return out[rides["power_ignored"].fillna("").ne("")]
 
     @classmethod
     def recovery(cls, daily: pd.DataFrame) -> np.ndarray:
@@ -310,10 +328,12 @@ class PhysioInputs:
         """threshold readings (day index, watts, source index) from every source that has some."""
         days = pd.DatetimeIndex(daily.index)
         parts = {"my_ftp": pd.Series({pd.Timestamp(k): float(v) for k, v in (ftp_history or {}).items()}, dtype=float)}
+        # watts at a threshold only from a ride with power (a ride marked wrong has none: metrics.power_check)
+        has = rides["has_power"].fillna(False).to_numpy(bool) if "has_power" in rides else np.ones(len(rides), bool)
         for name, col in (("alpha1_lt1", "hrvt1_w"), ("ramp_lt1", "ramp_lt1_w"), ("ramp_lt2", "ramp_lt2_w"),
                           ("ramp_hr_lt1", "ramp_hr_lt1_w"), ("ramp_hr_lt2", "ramp_hr_lt2_w")):
             if col in rides:
-                parts[name] = pd.Series(rides[col].to_numpy(float), index=days[idx])
+                parts[name] = pd.Series(np.where(has, rides[col].to_numpy(float), np.nan), index=days[idx])
         names = [s.name for s in SOURCES]
         s = pd.concat({k: v for k, v in parts.items() if len(v)}, names=["source", "day"])
         s = s[np.isfinite(s.to_numpy(float)) & (s.to_numpy(float) > 0)]
@@ -361,6 +381,7 @@ class PhysioRun:
                                             # shows a run started elsewhere; peer sync skips *.log)
     SEVERE = "severe"                # the illnesses (models.illness severity) the model allows a larger change in
     FULL_RUN = "goodpush physio --nuts --samples 2500 --ess 400 --max-minutes 540"   # what to run for new draws
+    ANALYSED = "physio_analysed.txt"   # the model (structure) whose daily states the analysis tables were made from
 
     def __init__(self, proj, since_days: int | None = None):
         """since_days: fit on about the last this many days only (`goodpush physio --since-days`); None: [physio]
@@ -406,8 +427,41 @@ class PhysioRun:
                 continue
         return "zlib"
 
+    def reset(self, progress=print) -> bool:
+        """True when there are no daily states of this model to build inputs from (no fit of this version yet).
+        Another version's states - and the rides' heart-rate splits made with them (SevereSplit, kept per ride) -
+        are deleted first: nothing of another model's fit gets into this one's inputs (2026-11-27: a broken fit's
+        states would have fed the next version's). A process on an older VERSION than the code on disk touches
+        nothing (`same_code`)."""
+        from ..metrics.severe_hr import SevereSplit
+        from ..physio.model import VERSION
+        if self.version_on_disk() != VERSION:
+            return False
+        if self.stored() is not None and (self.processed / self.STATES).exists():
+            return False
+        gone = [f for f in (self.STATES, SevereSplit.FILE) if (self.processed / f).exists()]   # (ANALYSED names
+                                                                                                 # its own model)
+        for f in gone:
+            (self.processed / f).unlink()
+        if gone:
+            progress(f"physio model {self.structure().rsplit('|', 1)[-1]}: the last fit is of another model version - "
+                     "its daily states and what was worked out from them set aside")
+        return True
+
+    def analysed(self) -> bool:
+        """the analysis tables were made from this model's own daily states (ANALYSED, written by the analysis)."""
+        try:
+            return (self.processed / self.ANALYSED).read_text(encoding="utf-8").strip() == self.structure()
+        except OSError:
+            return False
+
+    def mark(self, own: bool) -> None:
+        """the analysis just made its tables from this model's daily states (`own`) or without any."""
+        (self.processed / self.ANALYSED).write_text(self.structure() if own else "", encoding="utf-8")
+
     def inputs(self) -> PhysioData:
         import json
+        self.reset()                               # never another model's states (SevereSplit reads them)
         acts = pd.read_parquet(self.processed / "activities.parquet")
         daily = pd.read_parquet(self.processed / "daily.parquet")
         ath = self.proj.cfg.get("athlete") or {}
@@ -514,12 +568,9 @@ class PhysioRun:
         import json
         import time
         progress(line)
-        path = self.processed / self.PROGRESS
+        body = json.dumps({"kind": kind, "started": started, "t": time.time(), "line": str(line)}).encode("utf-8")
         try:
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps({"kind": kind, "started": started, "t": time.time(), "line": str(line)}),
-                           encoding="utf-8")
-            tmp.replace(path)
+            self.write_whole(self.processed / self.PROGRESS, lambda f: f.write(body))
         except OSError:
             pass
 

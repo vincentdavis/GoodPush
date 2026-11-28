@@ -265,6 +265,37 @@ def test_run_warm_start_and_states(tmp_path):
     assert len(st) == len(m.data.days) and (st["cp_p05"] <= st["cp_p95"]).all()
 
 
+def stored_fit(folder, structure, derived):
+    """a stored fit of model `structure` and the files (`derived`) worked out from its states."""
+    from goodpush.models.physio import PhysioRun
+    from goodpush.physio.model import NOISE_WEEKS
+    np.savez_compressed(folder / PhysioRun.FIT, z=np.zeros(1), names=np.array(["a"]), noise_weeks=NOISE_WEEKS,
+                        states=structure)
+    for f in derived:
+        (folder / f).write_text("x", encoding="utf-8")
+
+
+def test_a_new_model_version_never_reads_the_old_fits_states(tmp_path):
+    """2026-11-27: inputs worked out from the last fit's daily states (SevereSplit keeps them per ride) must not
+    come from another model version's fit: they are set aside, and the analysis is marked as made without them."""
+    from types import SimpleNamespace
+    from goodpush.metrics.severe_hr import SevereSplit
+    from goodpush.models.physio import PhysioRun
+    run = PhysioRun(SimpleNamespace(processed=tmp_path, reports=tmp_path, cfg={}))
+    derived = (PhysioRun.STATES, SevereSplit.FILE)
+    stored_fit(tmp_path, PhysioRun.structure().replace("|v", "|v0"), derived)   # another version's fit
+    said = []
+    assert run.reset(said.append) and not any((tmp_path / f).exists() for f in derived) and said
+    assert run.reset(said.append) and len(said) == 1                     # nothing left: no fit of this one yet
+    stored_fit(tmp_path, PhysioRun.structure(), derived)                 # this version's
+    assert not run.reset(said.append) and all((tmp_path / f).exists() for f in derived)
+    assert not run.analysed()
+    run.mark(True)
+    assert run.analysed()
+    run.mark(False)
+    assert not run.analysed()
+
+
 def dose_problem(cap, days=28, weight=1.0, **kw):
     from goodpush.physio.plan import DosePlan, Target
     m = PhysioModel(synthetic())
@@ -1185,6 +1216,39 @@ def test_numba_matches_jax_with_maxed_efforts():
         assert np.allclose(gn, np.asarray(gj), rtol=1e-7, atol=1e-7 * np.abs(gj).max())
 
 
+def test_numba_matches_jax_with_bad_readings():
+    """2026-11-26 (v17): bests far over the curve and in the crossover (both branches share them) - both agree."""
+    d = synthetic(n_days=84)
+    w = d.effort_w.copy()
+    w[::7], w[3::11] = 3.0 * w[::7], 1.13 * w[3::11]
+    m = PhysioModel(replace(d, effort_w=w))
+    f = PhysioFit(m)
+    w0 = f.to_w(f.map(maxiter=200).z)
+    rng = np.random.default_rng(3)
+    for x in (w0, w0 + 0.3 * rng.standard_normal(w0.size)):
+        vj, gj = f.value_and_grad(jnp.asarray(x), m.spec.layout, m.arrays)
+        vn, gn = f.fast.value_and_grad(x)
+        assert np.isclose(vn, float(vj), rtol=1e-10, atol=1e-8)
+        assert np.allclose(gn, np.asarray(gj), rtol=1e-7, atol=1e-7 * np.abs(gj).max())
+
+
+def test_one_broken_power_meter_best_barely_moves_the_curve():
+    """2026-11-26: a ride's 1000 W for 4:20 (heart rate 132) lifted a synthetic rider's CP +86 %, MAP +119 % over the
+    whole history; with BAD_READING_SHARE a lone best at 3 x the curve moves MAP and CP under 2 %."""
+    d = synthetic(n_days=84)
+    base = PhysioModel(d)
+    k = int(np.flatnonzero(d.effort_s <= 300)[len(d.effort_s) // 4])
+    w = d.effort_w.copy()
+    w[k] *= 3.0
+    glitch = PhysioModel(replace(d, effort_w=w))
+    caps = []
+    for m in (base, glitch):
+        X, _, _ = m.simulate(PhysioFit(m).map(maxiter=400).z)
+        c = PhysioModel.capacity(X)
+        caps.append(np.array([np.median(np.asarray(c["map"])), np.median(np.asarray(c["cp"]))]))
+    assert np.all(np.abs(caps[1] / caps[0] - 1) < 0.02)
+
+
 def test_nuts_takes_smaller_steps_than_the_default():
     """2026-11-04: chains stuck in a funnel at numpyro's 0.8 - the kernel asks for 0.9, and a run made otherwise is a
     different sampler (its checkpoint isn't gone on from)."""
@@ -1259,10 +1323,14 @@ def test_priors_centre_on_the_riders_own_first_year():
     from goodpush.physio.model import FLOOR_SHARE, GENERIC_LEVEL_W
     d = synthetic(n_days=84)
     assert d.level_w is None and PhysioModel(d).spec.mean[0] == np.log(GENERIC_LEVEL_W[0])     # no level: generic
-    day = np.repeat(np.r_[np.arange(0, 60, 3), 500], 2)                  # 20 rides, and one 500 days in: not the start
-    s, w = np.tile([5.0, 300.0], 21), np.tile([700.0, 240.0], 21) * np.repeat(np.r_[np.linspace(0.8, 1.0, 20), 1.5], 2)
+    day = np.repeat(np.r_[np.arange(0, 336, 3), 500], 2)                 # 112 rides, and one 500 days in: not the start
+    n = day.size // 2
+    s = np.tile([5.0, 300.0], n)
+    w = np.tile([700.0, 240.0], n) * np.repeat(np.r_[0.8 + 0.2 * (np.arange(n - 1) % 9 == 0), 1.5], 2)
     lvl = PhysioInputs.own_level(day, s, w)
-    assert lvl[0] == 240.0 and 0.95 * 700 < lvl[1] <= 700.0             # the first year's best 5 min, sprint near its best
+    assert lvl == (240.0, 700.0)                                         # each 8-week block's best: the near all-out ones
+    w[2 * 5 + 1] = 1000.0                                                # 2026-11-26: a broken meter's 5 min at 1000 W
+    assert PhysioInputs.own_level(day, s, w) == lvl                      # one block's best moves no median
     assert np.allclose(PhysioInputs.own_level(day, s, 0.5 * w), 0.5 * np.array(lvl))   # half the watts: half the level
     assert PhysioInputs.own_level(day[:10], s[:10], w[:10]) is None       # five rides: no level of their own yet
     own = replace(d, level_w=lvl)
@@ -1665,3 +1733,22 @@ def test_a_nuts_run_says_how_far_it_is_while_it_holds_the_lock(tmp_path):
     say("after the run")
     assert PhysioRun.nuts_progress(tmp_path) is None                  # no run holds LOCK
     assert said[-1] == "after the run" and said[0].startswith("physio model: starting")
+
+
+def test_compiled_code_kept_apart_by_compression(tmp_path, monkeypatch):
+    """jax names a cache entry the same for zstd and zlib, so each compression gets its own folder (the installed app
+    on Python 3.12 and a 3.14 checkout shared one and read each other's entries wrong); entries from before go."""
+    from jax._src import compilation_cache as cc
+    from goodpush.models.physio import PhysioRun
+    assert PhysioRun.cache_codec() == ("zstd" if cc.zstd else "zstandard" if cc.zstandard else "zlib")
+    set_to = {}
+    monkeypatch.delenv("JAX_COMPILATION_CACHE_DIR", raising=False)
+    monkeypatch.setattr(jax.config, "update", lambda name, value: set_to.__setitem__(name, value))
+    (tmp_path / "jit_f-abc-cache").write_bytes(b"x")
+    (tmp_path / "jit_f-abc-atime").write_bytes(b"x")
+    (tmp_path / "zlib").mkdir()
+    (tmp_path / "zlib" / "jit_g-def-cache").write_bytes(b"x")
+    PhysioRun.keep_compiled(tmp_path)
+    assert set_to["jax_compilation_cache_dir"] == str(tmp_path / PhysioRun.cache_codec())
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["zlib"]
+    assert (tmp_path / "zlib" / "jit_g-def-cache").exists()

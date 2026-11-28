@@ -244,6 +244,15 @@ class RidePage extends Page {
     g.strokeStyle = this.STRAVA_LINE; g.lineWidth = 2.5; g.stroke(path);
   }
 
+  // why this ride's power is set aside (metrics.power_check), and the way back
+  powerNote(a) {
+    if (a.power_ignored === "marked") return `<div class="card small row">You marked this ride's power as wrong: it counts as a ride without power (load from heart rate, no best powers).
+      <span class="spacer"></span><button class="btn sm" data-rpower="">Use its power again</button></div>`;
+    if (a.power_ignored === "heart rate") return `<div class="card small row">Its best powers are set aside: minutes far above your usual while heart rate stayed under threshold – most likely a power meter glitch. Its time and load still count.
+      <span class="spacer"></span><button class="btn sm" data-rpower="keep">They're real – keep them</button><button class="btn sm" data-rpower="bad">All its power is wrong</button></div>`;
+    return "";
+  }
+
   // a ride goodpush recorded is deleted for good; one from Strava / Garmin is left out (a sync can't bring it back)
   async deleteRide() {
     const a = this.RIDE, mine = a.id.startsWith("goodpush_");
@@ -287,10 +296,12 @@ class RidePage extends Page {
   <div class="row"><a href="#rides">← Rides</a><span class="spacer"></span>
     ${a.prev ? `<a class="btn sm" href="#ride/${encodeURIComponent(a.prev)}">← Older</a>` : ""}${a.next ? `<a class="btn sm" href="#ride/${encodeURIComponent(a.next)}">Newer →</a>` : ""}
     ${this.stravaMissing(a) ? `<button class="btn sm" id="rstrava" title="Opens Strava's upload page and a folder with this ride's file (drag it onto the page) and a picture of the workout (add it to the activity as a photo); its title goes on the clipboard">Send to Strava</button>` : ""}
+    ${a.sport === "ride" && !a.power_ignored && a.avg_power ? `<button class="btn sm" data-rpower="bad" title="A broken power meter: this ride counts as one without power (load from heart rate; no best powers, no FTP from it)">Power is wrong</button>` : ""}
     <button class="btn sm danger" id="rdel">Delete</button></div>
   <h1 style="margin-top:12px">${esc(a.name || "Ride")}</h1>
   <p class="sub">${this.rideLine(a)}</p>
   ${notes ? `<div class="card small">${notes}</div>` : ""}
+  ${this.powerNote(a)}
   <div class="tiles" style="margin-top:12px">
     ${tile("Time", mmss(a.duration_s || 0), "", a.moving_s && a.moving_s < a.duration_s - 60 ? `moving ${mmss(a.moving_s)}` : "")}
     ${a.distance_m ? tile("Distance", fmt(a.distance_m / 1000, 1), "km", kmh ? `${fmt(kmh, 1)} km/h` : "") : ""}
@@ -593,6 +604,12 @@ class RidePage extends Page {
     requestAnimationFrame(() => { this.drawRide(); this.drawSelection(); });
     $("#rdel").addEventListener("click", () => this.deleteRide());
     $("#rstrava")?.addEventListener("click", () => this.sendToStrava());
+    document.querySelectorAll("[data-rpower]").forEach((b) => b.addEventListener("click", () => {
+      const v = b.dataset.rpower;
+      api.action({action: "ride_power", ride: this.RIDE.id, value: v},
+        v === "bad" ? "Power set aside – re-analysing…" : "Power used again – re-analysing…");
+      this.RIDE = null;                       // reloaded with its new state
+    }));
     $("[data-maxhr]")?.addEventListener("click", (e) => api.action({action: "settings", section: "athlete",
       values: {max_hr: +e.currentTarget.dataset.maxhr}}, "Max HR saved – re-analysing…"));
     $("#rivshow")?.addEventListener("change", (e) => {

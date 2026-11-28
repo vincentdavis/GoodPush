@@ -23,7 +23,7 @@ import jax.numpy as jnp
 import numpy as np
 from numba import config, njit, prange
 
-from .model import (ALL_OUT_SD, DOSE_UNIT_H, EDGE_WIDTH, EVIDENCE, GAIN_EFFECT, GAIN_INDEX, HR_KNOTS, HR_LOG_2PI, MAP_S, RATE_OF, MIN_READING_SD, MIN_SHAPE, NOISE_SD,
+from .model import (ALL_OUT_SD, BAD_READING_SHARE, BAD_READING_WIDTH, DOSE_UNIT_H, EDGE_WIDTH, EVIDENCE, GAIN_EFFECT, GAIN_INDEX, HR_KNOTS, HR_LOG_2PI, MAP_S, RATE_OF, MIN_READING_SD, MIN_SHAPE, NOISE_SD,
                     NOISE_WEEKS, STATE_HI, STATE_LO, TRAINED, PhysioModel)
 
 # the parameter blocks the kernels read, in this order (offsets passed as one int array)
@@ -38,6 +38,8 @@ T_CP = 1800.0
 # parallel kernels (the Hessian) run on OpenMP where numba has it, else its other threading layers
 config.THREADING_LAYER_PRIORITY = ["omp", "tbb", "workqueue"]
 HALF_LOG_2PI = 0.5 * math.log(2.0 * math.pi)
+LOG_GOOD = math.log1p(-BAD_READING_SHARE)                          # an effort: a good reading's share, log
+LOG_BAD = math.log(BAD_READING_SHARE / BAD_READING_WIDTH)          # ... a bad reading's density, log
 SQRT2 = math.sqrt(2.0)
 
 
@@ -52,6 +54,18 @@ def sigmoid(x):
 @njit(cache=True, nogil=True, error_model="numpy")
 def log_sigmoid(x):
     return -math.log1p(math.exp(-x)) if x >= 0.0 else x - math.log1p(math.exp(x))
+
+
+@njit(cache=True, nogil=True, error_model="numpy")
+def good_or_bad(term):
+    """an effort's log likelihood as a good reading (`term`) -> with the bad-reading share mixed in
+    (PhysioModel.effort_terms), and the good reading's responsibility (what its gradients are scaled by)."""
+    g = LOG_GOOD + term
+    if g > LOG_BAD:
+        e = math.exp(LOG_BAD - g)
+        return g + math.log1p(e), 1.0 / (1.0 + e)
+    e = math.exp(g - LOG_BAD)
+    return LOG_BAD + math.log1p(e), e / (1.0 + e)
 
 
 @njit(cache=True, nogil=True, error_model="numpy")
@@ -299,7 +313,8 @@ def potential_and_gradient(w, mean, sd, off, gain_row, gain_col, gain_effect, ra
                 term = sm + math.log1p(e)
                 ra = e / (1.0 + e)
             rs = 1.0 - ra
-            ra, rs = wt * ra, wt * rs                    # the weight: every gradient below is linear in ra, rs
+            term, rg = good_or_bad(term)
+            ra, rs = wt * rg * ra, wt * rg * rs          # weight x good reading: every gradient below is linear in ra, rs
             gu = -ra * uf / var
             gF[d] += gu * sf
             gz[o_sf] += gu * sf * F[d]
@@ -313,7 +328,8 @@ def potential_and_gradient(w, mean, sd, off, gain_row, gain_col, gain_effect, ra
                 gz[o_kind + kd - 1] += g_lsc
             g_pi[kd] += ra * sig_m[kd] - rs * sig_p[kd]
         else:
-            term, ra, rs = ao, wt, 0.0
+            term, rg = good_or_bad(ao)
+            ra, rs = wt * rg, 0.0
             gu = -ra * uf / var
             gF[d] += gu * sf
             gz[o_sf] += gu * sf * F[d]

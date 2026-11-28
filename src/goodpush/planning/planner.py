@@ -121,6 +121,10 @@ class Planner:
         cfg = self.cfg
         if cfg["load_model"] != "physio" and cfg["intensity"] != "model":
             return None
+        if self.stale_analysis():
+            progress("physio model: the analysis isn't made from this model's own daily states yet - CTL rules / "
+                     "pyramidal hard days until it is")
+            return None
         try:
             from ..models.physio import PhysioRun
             from .physio_load import PhysioLoad
@@ -139,6 +143,17 @@ class Planner:
         except Exception as e:  # noqa: BLE001 - e.g. jax missing: the CTL rules still make a plan
             progress(f"physio model unavailable, CTL rules / pyramidal hard days used: {e}")
             return None
+
+    def stale_analysis(self) -> bool:
+        """the plan uses the physio model and the analysis tables weren't made from its own daily states (a new
+        model version, or no fit yet: models.physio.PhysioRun.reset) - the analysis is due first."""
+        if self.cfg["load_model"] != "physio" and self.cfg["intensity"] != "model":
+            return False
+        try:
+            from ..models.physio import PhysioRun
+            return not PhysioRun(self.proj).analysed()
+        except ImportError:                  # no physio extra: no model
+            return False
 
     @staticmethod
     def log_mix(info: dict | None, progress=print) -> None:
@@ -179,6 +194,10 @@ class Planner:
                 tables = load_tables(self.proj.processed)
             except FileNotFoundError:
                 tables = self.no_rides(today)
+            else:
+                if write and self.stale_analysis():   # e.g. the first plan after a model update: analysed again
+                    from ..analyze import run_analysis
+                    tables = run_analysis(self.proj, progress)
         daily, acts = tables["daily"], tables["acts"]
         ftp, src = self.ftp(daily)
         with PlanState.LOCK:                 # the app may tick a session off meanwhile

@@ -158,3 +158,169 @@ def test_questions_use_the_apps_dialog_not_the_browsers():
     assert "export const ask = new Ask();" in controls and "d.showModal();" in controls
     css = (STATIC / "app.css").read_text(encoding="utf-8")                       # its styles built in
     assert "dialog.ask{" in css and "dialog.ask::backdrop{" in css
+
+
+def test_the_sync_icon_is_two_arrows_not_a_cloud():
+    """goodpush keeps everything on your computer: nothing in the app or the guide may look like a cloud (2026-11-27,
+    the Today redesign's sync icon)."""
+    status = (JS / "status_bar.js").read_text(encoding="utf-8")
+    assert "export const syncIcon" in status and "const ARROWS" in status
+    code = "\n".join(re.sub(r"//.*$", "", p.read_text(encoding="utf-8"), flags=re.M) for p in modules())
+    words = re.findall(r"\bcloud\w*", re.sub(r"console\.cloud\.google\.com", "", code), flags=re.I)
+    assert not words, words
+    guide = Path(__file__).parents[1] / "srcdocs"
+    said = [p.name for p in guide.rglob("*.md") if re.search(r"cloud icon", p.read_text(encoding="utf-8"), re.I)]
+    assert not said, said
+
+
+def test_the_status_bar_sync_page_and_setup_checklist_are_wired():
+    """the top bar's sync icon and Setup pill (status_bar.js), the Sync page (#sync) and the links into Settings'
+    sections."""
+    main = (JS / "main.js").read_text(encoding="utf-8")
+    assert "sync: syncPage" in main and 'id="statusbar"' in (STATIC / "index.html").read_text(encoding="utf-8")
+    status = (JS / "status_bar.js").read_text(encoding="utf-8")
+    keys = re.findall(r'\{key: "(\w+)", title:', status)
+    assert keys == ["garmin", "history", "model", "rideapp"]
+    settings = (JS / "pages" / "settings.js").read_text(encoding="utf-8")
+    from goodpush.config import SETTINGS                                       # settingsCard: one section each
+    sections = set(re.findall(r'this\.section\("(\w+)"', settings)) | set(SETTINGS)
+    links = set(re.findall(r"#settings/(\w+)", "".join(p.read_text(encoding="utf-8") for p in modules())))
+    assert links and links <= sections, links - sections
+
+
+def test_today_steps_through_days_without_module_state():
+    """#today/YYYY-MM-DD shows that day; the arrow keys and a swipe step through days (DaySteps: its state on the
+    class, not a module-level variable)."""
+    today = (JS / "pages" / "today.js").read_text(encoding="utf-8")
+    assert "router.routeArg()" in today and "ISO_DAY.test(a)" in today
+    assert "class DaySteps" in today and "new DaySteps().listen();" in today
+    assert not re.findall(r"^(?:let|var) ", today, re.M)
+
+
+def test_today_shows_its_why_and_steps_open_and_no_next_line():
+    """2026-11-27: the verdict's Why starts open, the session's steps are shown (no fold), and the links to the next
+    session and the week plan at the bottom are gone."""
+    today = (JS / "pages" / "today.js").read_text(encoding="utf-8")
+    assert 'id="todaywhy" open>' in today
+    assert 'id="todaysteps"' in today and '<details class="dayfold" id="todaysteps"' not in today
+    assert "nextline" not in today and "Week plan" not in today
+
+
+# colour-vision simulation (Machado, Oliveira & Fernandes 2009, full severity) and OKLab (Ottosson 2020): published
+# colour-science constants (the privacy check reads pairs of decimals as coordinates)
+CVD = {"protan": [[0.152286, 1.052583, -0.204868],      # privacy: ok
+                  [0.114503, 0.786281, 0.099216],       # privacy: ok
+                  [-0.003882, -0.048116, 1.051998]],    # privacy: ok
+       "deutan": [[0.367322, 0.860646, -0.227968],      # privacy: ok
+                  [0.280085, 0.672501, 0.047413],       # privacy: ok
+                  [-0.011820, 0.042940, 0.968881]],     # privacy: ok
+       "tritan": [[1.255528, -0.076749, -0.178779],     # privacy: ok
+                  [-0.078411, 0.930809, 0.147602],      # privacy: ok
+                  [0.004733, 0.691367, 0.303900]]}      # privacy: ok
+OKLAB_LMS = [[0.4122214708, 0.5363325363, 0.0514459929],     # privacy: ok
+             [0.2119034982, 0.6806995451, 0.1073969566],     # privacy: ok
+             [0.0883024619, 0.2817188376, 0.6299787005]]     # privacy: ok
+OKLAB_LAB = [[0.2104542553, 0.7936177850, -0.0040720468],    # privacy: ok
+             [1.9779984951, -2.4285922050, 0.4505937099],    # privacy: ok
+             [0.0259040371, 0.7827717662, -0.8086757660]]    # privacy: ok
+
+
+def oklab(hex_colour: str, sim=None):
+    """a colour (#rrggbb) in OKLab, as seen with the colour-vision simulation `sim` (Machado 2009, full severity)."""
+    import numpy as np
+    c = np.array([int(hex_colour[i:i + 2], 16) for i in (1, 3, 5)]) / 255
+    rgb = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    rgb = np.clip(np.asarray(sim) @ rgb, 0, 1) if sim is not None else rgb
+    return np.asarray(OKLAB_LAB) @ np.cbrt(np.asarray(OKLAB_LMS) @ rgb)
+
+
+def contrast(a: str, b: str) -> float:
+    """WCAG contrast ratio of two colours (#rrggbb)."""
+    import numpy as np
+    lum = []
+    for h in (a, b):
+        c = np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)]) / 255
+        lum.append(float(np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4) @ [0.2126, 0.7152, 0.0722]))
+    return (max(lum) + 0.05) / (min(lum) + 0.05)
+
+
+def test_red_amber_green_is_colour_blind_safe_everywhere():
+    """every red / amber / green in the app is --good / --warn / --bad (verdicts, chips, the morning ovals, the sync
+    icon and its lights; 2026-11-27). In each theme every pair stays apart for normal vision (OKLab Delta E x100 >= 15)
+    and for protan, deutan and tritan vision (>= 8), and as text each keeps 4.5:1 on its own tint (--good-bg ...).
+    The HTML report uses the same colours, and each morning oval carries its verdict in its label too."""
+    import itertools
+    import numpy as np
+    css = (Path(__file__).parents[1] / "styles" / "app.css").read_text(encoding="utf-8")
+    inks = re.findall(r"--good: (#\w{6}); --warn: (#\w{6}); --bad: (#\w{6});", css)
+    tints = re.findall(r"--good-bg: (#\w{6}); --warn-bg: (#\w{6}); --bad-bg: (#\w{6});", css)
+    assert len(inks) == len(tints) == 2
+    for cols, bgs in zip(inks, tints):
+        for a, b in itertools.combinations(cols, 2):
+            assert 100 * np.linalg.norm(oklab(a) - oklab(b)) >= 15, (a, b)
+            for name, sim in CVD.items():
+                assert 100 * np.linalg.norm(oklab(a, sim) - oklab(b, sim)) >= 8, (name, a, b)
+        assert all(contrast(ink, bg) >= 4.5 for ink, bg in zip(cols, bgs)), (cols, bgs)
+    report = (Path(__file__).parents[1] / "src" / "goodpush" / "report" / "dashboard.py").read_text(encoding="utf-8")
+    assert set(re.findall(r"--good:(#\w{6}); --bad:(#\w{6});", report)) == {(c[0], c[2]) for c in inks}
+    assert "--mgreen" not in css and ".mdot7.green { background:var(--good) }" in css
+    widgets = (JS / "widgets.js").read_text(encoding="utf-8")
+    assert 'class="mdot7 ${esc(m.status)}" role="img" title="${esc(t)}" aria-label="${esc(t)}"' in widgets
+
+
+def test_the_physio_lines_take_their_zone_colours():
+    """2026-11-27: the model's LT1 / CP / FTP / MAP / W′ / Pmax lines (Rider and Model pages) and their legends are
+    coloured where their intensity lands on the zone colour map (util.js INTENSITY_COL), not the series colours; each
+    stays visible as a line (3:1 on the chart surface) in both themes."""
+    util = (JS / "util.js").read_text(encoding="utf-8")
+    col = dict(re.findall(r'(\w+): "(--z\d)"', util.split("export const INTENSITY_COL = ", 1)[1].split("};", 1)[0]))
+    assert col == {"lt1": "--z3", "cp": "--z4", "ftp": "--z4", "map": "--z5", "w_prime": "--z6", "pmax": "--z7"}
+    model = (JS / "pages" / "model.js").read_text(encoding="utf-8")
+    rider = (JS / "pages" / "rider.js").read_text(encoding="utf-8")
+    for line in (model.split("const MODEL_Q", 1)[1].split("};", 1)[0], model.split("const READ_LINE", 1)[1].split("};", 1)[0],
+                 rider.split("const PHYSIO_LINES", 1)[1].split("\n", 1)[0]):
+        assert "INTENSITY_COL" in line and not re.search(r'"--s\d"', line), line
+    assert "lines = PHYSIO_LINES" in rider.split("chartPhysio(", 1)[1].split("const series", 1)[0]   # the chart ...
+    legend = next(x for x in rider.splitlines() if '<div class="legend">${PHYSIO_LINES.map(' in x)       # ... its legend
+    assert "INTENSITY_COL.cp" in legend and "--s" not in legend
+    assert "background:var(${qCol})" in model                                   # the readings chart's legend
+    css = (Path(__file__).parents[1] / "styles" / "app.css").read_text(encoding="utf-8")
+    surfaces = re.findall(r"--surface: (#\w{6});", css)
+    zones = [dict(re.findall(r"--(z\d): (#\w{6})", z)) for z in re.findall(r"(--z1: #\w{6};.*)", css)]
+    assert len(surfaces) == len(zones) == 2
+    for surface, z in zip(surfaces, zones):
+        assert all(contrast(z[c[2:]], surface) >= 3 for c in col.values()), (surface, z)
+
+
+def test_the_model_page_answers_can_i_trust_it_at_the_top():
+    """2026-11-27 Model page critique (reviews/model-page/README.md): one ranges verdict opens the page (no Ranges tile
+    beside it to disagree with), predicted vs observed has titled axes over one range, the readings chart can take
+    each source's bias out, chart kinds have shapes as well as colours, and the charts have a text alternative."""
+    model = (JS / "pages" / "model.js").read_text(encoding="utf-8")
+    charts = (JS / "charts.js").read_text(encoding="utf-8")
+    assert 'tile("Ranges"' not in model and "rangesVerdict()" in model
+    assert all(f'["Ranges: {w}' in model for w in ("none yet", "rough", "trustworthy"))
+    effort = model.split('EChart.draw("mdEffort"', 1)[1].split("series:", 1)[0]
+    assert all(k in effort for k in ("xDomain: [lo, hi]", "yDomain: [lo, hi]", "xName:", "yName:", "tick", "label:"))
+    assert "yDomain" in charts.split("yRange(view) {", 1)[1].split("}", 1)[0]
+    assert 'id="mdReadFair"' in model and "bias[n]" in model and "READ_NAME" in model
+    assert all(f'"{s}"]' in model for s in ("diamond", "triangle")) and "symbol: s.shape" in charts
+    assert 'box.setAttribute("role", "img")' in charts
+    assert all(f'EChart.draw("{c}"' in model for c in ("mdEffort", "mdRead", "mdFatigue"))
+    assert model.count("label: `") >= 3
+    assert "j.stage || j.other" in model                         # keeps polling while a run started elsewhere goes on
+
+
+def test_the_intensity_colours_keep_their_order_in_both_themes():
+    """--z1 (easy) is the yellow end and --z7 (hard) the blue end in light and dark alike (the dark theme reversed
+    the scale before 2026-11-27); text on a zone colour (--on-z*) stays readable on it."""
+    css = (Path(__file__).parents[1] / "styles" / "app.css").read_text(encoding="utf-8")
+    zones = [dict(re.findall(r"--(z\d): (#\w{6})", z)) for z in re.findall(r"(--z1: #\w{6};.*)", css)]
+    on = [dict(re.findall(r"--on-(z\d): (#\w{6})", z)) for z in re.findall(r"(--on-z1: #\w{6};.*)", css)]
+    assert len(zones) == len(on) == 2
+    for z, t in zip(zones, on):
+        r, g, b = (int(z["z1"][i:i + 2], 16) for i in (1, 3, 5))
+        assert r > b + 60 and g > b + 60                         # z1 yellow
+        r, g, b = (int(z["z7"][i:i + 2], 16) for i in (1, 3, 5))
+        assert b > r + 40                                        # z7 blue
+        assert all(contrast(t[k], z[k]) >= 4.5 for k in t), (z, t)
